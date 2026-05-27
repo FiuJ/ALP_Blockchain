@@ -10,6 +10,63 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+
+
+model Doctor {
+  id                  Int      @id @default(autoincrement())
+  walletAddress       String   @unique
+  name                String
+  doctorLicenseNumber String   @unique
+  specialization      String
+  clinicName          String
+  clinicLocation      String
+  isVerified          Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  // Relasi: Satu dokter bisa menerbitkan banyak dokumen
+  issuedDocuments     MedicalDocument[] 
+}
+
+model Patient {
+  id                  Int      @id @default(autoincrement())
+  walletAddress       String   @unique
+  name                String
+  patientId           String   @unique
+  isRegistered        Boolean  @default(false)
+  createdAt           DateTime @default(now())
+
+  // Relasi: Satu pasien bisa memiliki banyak dokumen
+  documents           MedicalDocument[]
+}
+
+model MedicalDocument {
+  id                  Int      @id @default(autoincrement())
+  
+  // Hash ini SANGAT PENTING karena menjadi jembatan penghubung antara 
+  // database lokal MySQL dengan data yang ada di Smart Contract Blockchain
+  documentHash        String   @unique 
+  
+  // Menyimpan path/lokasi file fisik PDF di folder lokal 'file_letters'
+  filePath            String   
+  
+  documentType        String
+  
+  // Teks deskripsi panjang (seperti resep/keterangan istirahat) 
+  // menggunakan @db.Text agar bisa memuat banyak karakter
+  documentDescription String   @db.Text 
+  
+  issuedAt            DateTime @default(now())
+  expiredAt           DateTime?
+
+  // Relasi (Foreign Keys) ke tabel Doctor
+  issuerWallet        String
+  issuer              Doctor   @relation(fields: [issuerWallet], references: [walletAddress])
+
+  // Relasi (Foreign Keys) ke tabel Patient
+  patientWallet       String
+  patient             Patient  @relation(fields: [patientWallet], references: [walletAddress])
 }
