@@ -21,7 +21,7 @@ describe("MedicalDocumentVerification", async function () {
     return { contract, publicClient, owner, doctor1, patient1 };
   }
 
-  it("Harus menetapkan owner yang benar", async function () {
+  it("test_should_return_owner_address", async function () {
     const { contract, owner } = await deployContracts();
 
     const contractOwner = await contract.read.owner();
@@ -29,11 +29,11 @@ describe("MedicalDocumentVerification", async function () {
     assert.equal(
       contractOwner.toLowerCase(),
       owner.account.address.toLowerCase(),
-      "Owner address tidak sesuai",
+      "Owner address does not match deployer address",
     );
   });
 
-  it("Harus bisa mendaftarkan dokter baru", async function () {
+  it("test_should_register_new_doctor", async function () {
     const { contract, doctor1 } = await deployContracts();
 
     // Dokter mendaftar
@@ -51,7 +51,7 @@ describe("MedicalDocumentVerification", async function () {
     assert.equal(doctorData[5], false, "Status isVerified harusnya false");
   });
 
-  it("Harus mengizinkan owner (admin) untuk memverifikasi dokter", async function () {
+  it("test_should_allow_owner_to_verify_doctor", async function () {
     const { contract, owner, doctor1 } = await deployContracts();
 
     // Dokter mendaftar
@@ -71,7 +71,7 @@ describe("MedicalDocumentVerification", async function () {
     assert.equal(isVerified, true, "Dokter gagal diverifikasi oleh admin");
   });
 
-  it("Harus bisa menerbitkan dokumen jika dokter sudah diverifikasi", async function () {
+  it("test_should_allow_doctor_to_issue_document_if_verified", async function () {
     const { contract, owner, doctor1, patient1 } = await deployContracts();
 
     // Setup awal
@@ -112,7 +112,7 @@ describe("MedicalDocumentVerification", async function () {
     assert.equal(docDetails[0], docHash, "Hash dokumen tidak sesuai");
   });
 
-  it("Tidak boleh mengizinkan dokter yang belum diverifikasi untuk menerbitkan surat", async function () {
+  it("test_should_not_allow_unverified_doctor_to_issue_document", async function () {
     const { contract, doctor1, patient1 } = await deployContracts();
 
     // Dokter daftar tapi TIDAK diverifikasi admin
@@ -146,7 +146,7 @@ describe("MedicalDocumentVerification", async function () {
         assert.match(err.message, /Doctor is not verified/);
         return true;
       },
-      "Transaksi harusnya gagal (revert)",
+      "Expected transaction to be rejected with 'Doctor is not verified'",
     );
   });
 });
