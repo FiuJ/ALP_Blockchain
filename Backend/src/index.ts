@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-// import rootRouter from './routes';
+import { errorHandler } from './middlewares/error.middleware';
+import rootRouter from './routes/routes';
 // import { errorHandler } from './middlewares/error.middleware';
 
 const app = express();
@@ -16,10 +17,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/files', express.static(path.join(__dirname, '../../file_letters')));
 
 // API Routes
-// app.use('/api', rootRouter);
+app.use('/api', rootRouter);
 
 // // Global Error Handler (harus di paling bawah)
-// app.use(errorHandler);
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`🚀 Backend Server berjalan di http://localhost:${PORT}`);

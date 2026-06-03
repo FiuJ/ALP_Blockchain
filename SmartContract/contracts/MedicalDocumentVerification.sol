@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-contract MedicalDocumentVerification {
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
+contract MedicalDocumentVerification is ERC721URIStorage {
     address public owner;
+    uint256 private _nextTokenId;
 
     // Struct Data
     struct Doctor {
@@ -23,7 +27,6 @@ contract MedicalDocumentVerification {
 
     struct MedicalDocument {
         string documentHash;
-        string filePath;
         string documentType;
         address issuer;
         address patient;
@@ -39,13 +42,13 @@ contract MedicalDocumentVerification {
         bool verificationResult;
     }
 
-    //  Mapping 
+    // Mapping
     mapping(address => Doctor) public doctors;
     mapping(address => Patient) public patients;
     mapping(string => MedicalDocument) public medicalDocuments;
     mapping(string => VerificationRecord[]) public verificationRecords;
 
-    //  Modifier 
+    // Modifier
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can access");
         _;
@@ -53,11 +56,6 @@ contract MedicalDocumentVerification {
 
     modifier onlyVerifiedDoctor() {
         require(doctors[msg.sender].isVerified, "Doctor is not verified");
-        _;
-    }
-
-    modifier onlyRegisteredPatient() {
-        require(patients[msg.sender].isRegistered, "Patient is not registered");
         _;
     }
 
@@ -69,13 +67,14 @@ contract MedicalDocumentVerification {
         _;
     }
 
-    // Events 
+    // Events
     event DoctorRegistered(address indexed doctorAddress, string doctorName);
     event PatientRegistered(address indexed patientAddress, string patientName);
     event DoctorVerified(address indexed doctorAddress);
     event DoctorRevoked(address indexed doctorAddress);
     event DocumentIssued(
         string documentHash,
+        uint256 indexed tokenId, // Ditambahkan tokenId ke event agar backend tahu
         address indexed issuer,
         address indexed patient,
         uint256 issuedAt
@@ -87,14 +86,13 @@ contract MedicalDocumentVerification {
     );
     event DocumentRevoked(string documentHash, address indexed issuer);
 
-    //  Constructor 
-    constructor() {
+    // Constructor
+    constructor() ERC721("Medical Document", "MEDDOC") {
         owner = msg.sender;
     }
 
-    //  Functions 
+    // Functions
 
-    // Fitur 1: Registrasi Dokter
     function registerDoctor(
         string memory name,
         string memory doctorLicenseNumber,
@@ -117,7 +115,6 @@ contract MedicalDocumentVerification {
         emit DoctorRegistered(msg.sender, name);
     }
 
-    
     function registerPatient(
         string memory name,
         string memory patientId
@@ -170,11 +167,11 @@ contract MedicalDocumentVerification {
         return doctors[doctorAddress].isVerified;
     }
 
+    // PERBAIKAN 1: Menambahkan parameter tokenURI dan proses _mint
     function issueDocument(
         string memory documentHash,
-        string memory filePath,
         string memory documentType,
-        string memory documentDescription, // Parameter ini tidak disimpan di struct on-chain untuk menghemat gas, bisa disimpan di MySQL
+        string memory tokenURI, // Link ke JSON metadata di backend
         address patientAddress,
         uint256 expiredAt
     ) public onlyVerifiedDoctor {
@@ -187,9 +184,14 @@ contract MedicalDocumentVerification {
             "Patient is not registered"
         );
 
+        // 1. Proses Minting NFT ke Wallet Pasien
+        uint256 tokenId = _nextTokenId++;
+        _mint(patientAddress, tokenId);
+        _setTokenURI(tokenId, tokenURI);
+
+        // 2. Simpan ke Mapping (sebagai index pencarian cepat untuk verifier)
         medicalDocuments[documentHash] = MedicalDocument({
             documentHash: documentHash,
-            filePath: filePath,
             documentType: documentType,
             issuer: msg.sender,
             patient: patientAddress,
@@ -200,6 +202,7 @@ contract MedicalDocumentVerification {
 
         emit DocumentIssued(
             documentHash,
+            tokenId, // Kirim tokenId ke event
             msg.sender,
             patientAddress,
             block.timestamp
@@ -231,7 +234,6 @@ contract MedicalDocumentVerification {
         return currentValidity;
     }
 
-   
     function revokeDocument(
         string memory documentHash
     ) public onlyVerifiedDoctor documentExists(documentHash) {
@@ -249,6 +251,7 @@ contract MedicalDocumentVerification {
         emit DocumentRevoked(documentHash, msg.sender);
     }
 
+    // PERBAIKAN 2: Signature dan return value diperbaiki (menghapus filePath)
     function getDocumentDetails(
         string memory documentHash
     )
@@ -256,14 +259,13 @@ contract MedicalDocumentVerification {
         view
         documentExists(documentHash)
         returns (
-            string memory,
-            string memory,
-            string memory,
-            address,
-            address,
-            uint256,
-            uint256,
-            bool
+            string memory, // documentHash
+            string memory, // documentType
+            address, // issuer
+            address, // patient
+            uint256, // issuedAt
+            uint256, // expiredAt
+            bool // currentValidity
         )
     {
         MedicalDocument memory doc = medicalDocuments[documentHash];
@@ -275,8 +277,7 @@ contract MedicalDocumentVerification {
 
         return (
             doc.documentHash,
-            doc.filePath,
-            doc.documentType,
+            doc.documentType, // Langsung documentType, filePath dihapus
             doc.issuer,
             doc.patient,
             doc.issuedAt,
@@ -323,5 +324,31 @@ contract MedicalDocumentVerification {
     ) public view returns (string memory, string memory, bool) {
         Patient memory pat = patients[patientAddress];
         return (pat.name, pat.patientId, pat.isRegistered);
+    }
+
+    // PERBAIKAN 3: Soulbound Token Hook (Aman untuk berbagai versi OpenZeppelin)
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override(ERC721, IERC721) {
+        revert("Medical documents are Soulbound and cannot be transferred");
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public virtual override(ERC721, IERC721) {
+        revert("Medical documents are Soulbound and cannot be transferred");
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override(ERC721, IERC721) {
+        revert("Medical documents are Soulbound and cannot be transferred");
     }
 }

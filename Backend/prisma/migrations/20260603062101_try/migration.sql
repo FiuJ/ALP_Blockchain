@@ -9,6 +9,7 @@ CREATE TABLE `Doctor` (
     `clinicLocation` VARCHAR(191) NOT NULL,
     `isVerified` BOOLEAN NOT NULL DEFAULT false,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `Doctor_walletAddress_key`(`walletAddress`),
     UNIQUE INDEX `Doctor_doctorLicenseNumber_key`(`doctorLicenseNumber`),
@@ -23,6 +24,7 @@ CREATE TABLE `Patient` (
     `patientId` VARCHAR(191) NOT NULL,
     `isRegistered` BOOLEAN NOT NULL DEFAULT false,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `Patient_walletAddress_key`(`walletAddress`),
     UNIQUE INDEX `Patient_patientId_key`(`patientId`),
@@ -32,16 +34,21 @@ CREATE TABLE `Patient` (
 -- CreateTable
 CREATE TABLE `MedicalDocument` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `tokenId` VARCHAR(191) NOT NULL,
     `documentHash` VARCHAR(191) NOT NULL,
     `filePath` VARCHAR(191) NOT NULL,
     `documentType` VARCHAR(191) NOT NULL,
     `documentDescription` TEXT NOT NULL,
     `issuedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `expiredAt` DATETIME(3) NULL,
+    `isRevoked` BOOLEAN NOT NULL DEFAULT false,
     `issuerWallet` VARCHAR(191) NOT NULL,
     `patientWallet` VARCHAR(191) NOT NULL,
 
+    UNIQUE INDEX `MedicalDocument_tokenId_key`(`tokenId`),
     UNIQUE INDEX `MedicalDocument_documentHash_key`(`documentHash`),
+    INDEX `MedicalDocument_issuerWallet_idx`(`issuerWallet`),
+    INDEX `MedicalDocument_patientWallet_idx`(`patientWallet`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

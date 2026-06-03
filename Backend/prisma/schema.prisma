@@ -5,8 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -14,59 +13,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
 model Doctor {
-  id                  Int      @id @default(autoincrement())
-  walletAddress       String   @unique
+  id                  Int     @id @default(autoincrement())
+  walletAddress       String  @unique
   name                String
-  doctorLicenseNumber String   @unique
+  doctorLicenseNumber String  @unique
   specialization      String
   clinicName          String
   clinicLocation      String
-  isVerified          Boolean  @default(false)
-  createdAt           DateTime @default(now())
+  isVerified          Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt // Best practice untuk tracking perubahan
 
   // Relasi: Satu dokter bisa menerbitkan banyak dokumen
-  issuedDocuments     MedicalDocument[] 
+  issuedDocuments MedicalDocument[]
 }
 
 model Patient {
-  id                  Int      @id @default(autoincrement())
-  walletAddress       String   @unique
-  name                String
-  patientId           String   @unique
-  isRegistered        Boolean  @default(false)
-  createdAt           DateTime @default(now())
+  id            Int     @id @default(autoincrement())
+  walletAddress String  @unique
+  name          String
+  patientId     String  @unique
+  isRegistered  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relasi: Satu pasien bisa memiliki banyak dokumen
-  documents           MedicalDocument[]
+  documents MedicalDocument[]
 }
 
 model MedicalDocument {
-  id                  Int      @id @default(autoincrement())
-  
-  // Hash ini SANGAT PENTING karena menjadi jembatan penghubung antara 
-  // database lokal MySQL dengan data yang ada di Smart Contract Blockchain
-  documentHash        String   @unique 
-  
+  id Int @id @default(autoincrement())
+
+  // [PERBAIKAN 2]: Wajib ada untuk sistem berbasis NFT (ERC721)
+  // Disimpan sebagai String karena uint256 Solidity bisa terlalu besar untuk Int MySQL
+  tokenId String @unique
+
+  // Hash sebagai bukti otentikasi file PDF
+  documentHash String @unique
+
   // Menyimpan path/lokasi file fisik PDF di folder lokal 'file_letters'
-  filePath            String   
-  
-  documentType        String
-  
+  filePath String
+
+  documentType String
+
   // Teks deskripsi panjang (seperti resep/keterangan istirahat) 
-  // menggunakan @db.Text agar bisa memuat banyak karakter
-  documentDescription String   @db.Text 
-  
-  issuedAt            DateTime @default(now())
-  expiredAt           DateTime?
+  documentDescription String @db.Text
+
+  issuedAt  DateTime  @default(now())
+  expiredAt DateTime?
+
+  // Status caching agar Frontend tidak perlu query blockchain terus-menerus
+  isRevoked Boolean @default(false)
 
   // Relasi (Foreign Keys) ke tabel Doctor
-  issuerWallet        String
-  issuer              Doctor   @relation(fields: [issuerWallet], references: [walletAddress])
+  issuerWallet String
+  issuer       Doctor @relation(fields: [issuerWallet], references: [walletAddress])
 
   // Relasi (Foreign Keys) ke tabel Patient
-  patientWallet       String
-  patient             Patient  @relation(fields: [patientWallet], references: [walletAddress])
+  patientWallet String
+  patient       Patient @relation(fields: [patientWallet], references: [walletAddress])
+
+  // [PERBAIKAN 3]: Indexing untuk mempercepat operasi 'Search & Filter' dari Frontend
+  @@index([issuerWallet])
+  @@index([patientWallet])
 }
