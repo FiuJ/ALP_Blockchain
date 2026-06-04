@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-0f2e04be8c2c6911f08cf64f01acbd8b94340985",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.6.0"
+  },
+  "userSourceNameMap": {
+    "contracts/PatientRegistry.sol": "project/contracts/PatientRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/PatientRegistry.sol": {
+        "content": "// SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.28;\n\ncontract PatientRegistry {\n    struct Patient {\n        string name;\n        string patientId;\n        bool isRegistered;\n    }\n\n    mapping(address => Patient) public patients;\n\n    event PatientRegistered(address indexed patientAddress, string patientName);\n\n    function registerPatient(string memory name, string memory patientId) public {\n        require(!patients[msg.sender].isRegistered, \"Patient already registered\");\n\n        patients[msg.sender] = Patient({\n            name: name,\n            patientId: patientId,\n            isRegistered: true\n        });\n\n        emit PatientRegistered(msg.sender, name);\n    }\n\n    // Fungsi eksternal untuk dipanggil oleh kontrak NFT\n    function isRegisteredPatient(address patientAddress) external view returns (bool) {\n        return patients[patientAddress].isRegistered;\n    }\n}"
+      }
+    }
+  }
+}

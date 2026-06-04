@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-14749334c5e7b62cdc0469c99467c57d098c06cb",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.6.0"
+  },
+  "userSourceNameMap": {
+    "contracts/DoctorRegistry.sol": "project/contracts/DoctorRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/DoctorRegistry.sol": {
+        "content": "// SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.28;\n\ncontract DoctorRegistry {\n    address public owner;\n\n    struct Doctor {\n        string name;\n        string doctorLicenseNumber;\n        string specialization;\n        string clinicName;\n        string clinicLocation;\n        bool isVerified;\n        bool isRegistered;\n    }\n\n    mapping(address => Doctor) public doctors;\n\n    event DoctorRegistered(address indexed doctorAddress, string doctorName);\n    event DoctorVerified(address indexed doctorAddress);\n    event DoctorRevoked(address indexed doctorAddress);\n\n    modifier onlyOwner() {\n        require(msg.sender == owner, \"Only owner can access\");\n        _;\n    }\n\n    constructor() {\n        owner = msg.sender;\n    }\n\n    function registerDoctor(\n        string memory name,\n        string memory doctorLicenseNumber,\n        string memory specialization,\n        string memory clinicName,\n        string memory clinicLocation\n    ) public {\n        require(!doctors[msg.sender].isRegistered, \"Doctor already registered\");\n\n        doctors[msg.sender] = Doctor({\n            name: name,\n            doctorLicenseNumber: doctorLicenseNumber,\n            specialization: specialization,\n            clinicName: clinicName,\n            clinicLocation: clinicLocation,\n            isVerified: false,\n            isRegistered: true\n        });\n\n        emit DoctorRegistered(msg.sender, name);\n    }\n\n    function verifyDoctor(address doctorAddress) public onlyOwner {\n        require(doctors[doctorAddress].isRegistered, \"Doctor is not registered\");\n        require(!doctors[doctorAddress].isVerified, \"Doctor is already verified\");\n\n        doctors[doctorAddress].isVerified = true;\n        emit DoctorVerified(doctorAddress);\n    }\n\n    function revokeDoctor(address doctorAddress) public onlyOwner {\n        require(doctors[doctorAddress].isRegistered, \"Doctor is not registered\");\n        require(doctors[doctorAddress].isVerified, \"Doctor is not verified yet\");\n\n        doctors[doctorAddress].isVerified = false;\n        emit DoctorRevoked(doctorAddress);\n    }\n\n    // Fungsi eksternal untuk dipanggil oleh kontrak NFT\n    function isVerifiedDoctor(address doctorAddress) external view returns (bool) {\n        return doctors[doctorAddress].isVerified;\n    }\n}"
+      }
+    }
+  }
+}
