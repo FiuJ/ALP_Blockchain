@@ -16,12 +16,10 @@ interface IPatientRegistry {
 contract MedicalDocumentNFT is ERC721URIStorage {
     IDoctorRegistry public doctorRegistry;
     IPatientRegistry public patientRegistry;
-    
     uint256 private _nextTokenId;
 
     struct MedicalDocument {
         string documentHash;
-        string documentType;
         address issuer;
         address patient;
         uint256 issuedAt;
@@ -54,7 +52,6 @@ contract MedicalDocumentNFT is ERC721URIStorage {
 
     function issueDocument(
         string memory documentHash,
-        string memory documentType,
         string memory tokenURI, 
         address patientAddress,
         uint256 expiredAt
@@ -69,7 +66,7 @@ contract MedicalDocumentNFT is ERC721URIStorage {
 
         medicalDocuments[tokenId] = MedicalDocument({
             documentHash: documentHash,
-            documentType: documentType,
+           
             issuer: msg.sender,
             patient: patientAddress,
             issuedAt: block.timestamp,

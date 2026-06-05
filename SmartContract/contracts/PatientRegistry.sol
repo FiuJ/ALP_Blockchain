@@ -3,25 +3,22 @@ pragma solidity ^0.8.28;
 
 contract PatientRegistry {
     struct Patient {
-        string name;
-        string patientId;
+       
         bool isRegistered;
     }
 
     mapping(address => Patient) public patients;
 
-    event PatientRegistered(address indexed patientAddress, string patientName);
+    event PatientRegistered(address indexed patientAddress);
 
-    function registerPatient(string memory name, string memory patientId) public {
+    function registerPatient() public {
         require(!patients[msg.sender].isRegistered, "Patient already registered");
 
         patients[msg.sender] = Patient({
-            name: name,
-            patientId: patientId,
             isRegistered: true
         });
 
-        emit PatientRegistered(msg.sender, name);
+        emit PatientRegistered(msg.sender);
     }
 
     // Fungsi eksternal untuk dipanggil oleh kontrak NFT

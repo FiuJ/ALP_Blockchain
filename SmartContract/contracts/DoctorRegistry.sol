@@ -5,18 +5,13 @@ contract DoctorRegistry {
     address public owner;
 
     struct Doctor {
-        string name;
-        string doctorLicenseNumber;
-        string specialization;
-        string clinicName;
-        string clinicLocation;
         bool isVerified;
         bool isRegistered;
     }
 
     mapping(address => Doctor) public doctors;
 
-    event DoctorRegistered(address indexed doctorAddress, string doctorName);
+    event DoctorRegistered(address indexed doctorAddress);
     event DoctorVerified(address indexed doctorAddress);
     event DoctorRevoked(address indexed doctorAddress);
 
@@ -30,25 +25,16 @@ contract DoctorRegistry {
     }
 
     function registerDoctor(
-        string memory name,
-        string memory doctorLicenseNumber,
-        string memory specialization,
-        string memory clinicName,
-        string memory clinicLocation
     ) public {
         require(!doctors[msg.sender].isRegistered, "Doctor already registered");
 
         doctors[msg.sender] = Doctor({
-            name: name,
-            doctorLicenseNumber: doctorLicenseNumber,
-            specialization: specialization,
-            clinicName: clinicName,
-            clinicLocation: clinicLocation,
+            
             isVerified: false,
             isRegistered: true
         });
 
-        emit DoctorRegistered(msg.sender, name);
+        emit DoctorRegistered(msg.sender);
     }
 
     function verifyDoctor(address doctorAddress) public onlyOwner {
