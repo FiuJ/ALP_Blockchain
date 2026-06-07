@@ -4,7 +4,7 @@ import DashboardPage from "./pages/DashboardPage";
 import VerifyPage from "./pages/VerifyPage";
 import LandingPage from "./pages/LandingPage";
 import ProfilePage from "./pages/ProfilePage";
-import OnboardingPage from "./pages/OnboardingPage";
+import OnboardingPage from "./pages/OnBoardingPage";
 
 function App() {
   return (
