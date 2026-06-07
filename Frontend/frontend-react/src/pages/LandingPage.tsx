@@ -1,7 +1,50 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ShieldCheck, FileText, Activity, Lock, Users, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAccount, useConnect } from 'wagmi';
+import { injected } from 'wagmi/connectors';
+import axios from 'axios';
 
-const LandingPage = () => {
+export default function LandingPage() {
+  const navigate = useNavigate();
+  const { address, isConnected } = useAccount();
+  const { connect } = useConnect();
+
+  // Efek ini akan otomatis berjalan SETELAH user sukses Connect Wallet
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      if (isConnected && address) {
+        try {
+          // 1. Cek apakah dia Dokter?
+          const docRes = await axios.get('http://localhost:3000/api/doctors');
+          const isDoctor = docRes.data.find((d: any) => d.walletAddress.toLowerCase() === address.toLowerCase());
+          
+          if (isDoctor) {
+            navigate('/doctor/dashboard'); // LOGIN BERHASIL sbg Dokter
+            return;
+          }
+
+          // 2. Cek apakah dia Pasien?
+          const patRes = await axios.get('http://localhost:3000/api/patients');
+          const isPatient = patRes.data.find((p: any) => p.walletAddress.toLowerCase() === address.toLowerCase());
+          
+          if (isPatient) {
+            navigate('/patient/dashboard'); // LOGIN BERHASIL sbg Pasien
+            return;
+          }
+
+          // 3. Jika bukan keduanya, berarti ini USER BARU
+          navigate('/onboarding'); // Arahkan ke form pendaftaran awal
+
+        } catch (error) {
+          console.error("Gagal memverifikasi status user", error);
+        }
+      }
+    };
+
+    checkUserStatus();
+  }, [isConnected, address, navigate]);
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
       {/* Navigation Bar */}
@@ -15,9 +58,14 @@ const LandingPage = () => {
           <a href="#cara-kerja" className="hover:text-blue-600 transition">Cara Kerja</a>
           <a href="#verifikasi" className="hover:text-blue-600 transition">Cek Dokumen</a>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium transition shadow-md flex items-center gap-2">
+        
+        {/* Tombol Ajaib (Login/Register trigger) */}
+        <button 
+          onClick={() => connect({ connector: injected() })}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium transition shadow-md flex items-center gap-2"
+        >
           <Lock size={16} />
-          Connect Wallet
+          {isConnected ? 'Memverifikasi...' : 'Connect Wallet'}
         </button>
       </nav>
 
@@ -92,10 +140,9 @@ const LandingPage = () => {
       </footer>
     </div>
   );
-};
+}
 
 // Sub-components for cleaner code
-
 type FeatureCardProps = {
   icon: React.ReactNode;
   title: string;
@@ -127,5 +174,3 @@ const StepCard: React.FC<StepCardProps> = ({ number, title, desc }) => (
     </div>
   </div>
 );
-
-export default LandingPage;
