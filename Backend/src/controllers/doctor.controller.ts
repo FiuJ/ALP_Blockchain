@@ -1,39 +1,55 @@
-import { Request, Response, NextFunction } from 'express';
-import { RegisterDoctorDto } from '../interfaces/doctor.interface';
-import { registerDoctorService } from '../services/doctorService';
+import { Request, Response } from 'express';
+import { DoctorService } from '../services/doctor.service';
 
-export const registerDoctorController = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const doctorData: RegisterDoctorDto = req.body;
-
-    // 1. Validasi Input Dasar
-    if (!doctorData.walletAddress || !doctorData.name || !doctorData.doctorLicenseNumber) {
-       return res.status(400).json({
+export class DoctorController {
+  static async register(req: Request, res: Response) {
+    try {
+      // Data didapat dari body request Frontend
+      const doctorData = req.body; 
+      
+      const result = await DoctorService.registerDoctor(doctorData);
+      
+      res.status(201).json({
+        success: true,
+        message: 'Registrasi dokter berhasil disimpan ke database.',
+        data: result,
+      });
+    } catch (error: any) {
+      res.status(400).json({
         success: false,
-        message: 'Data tidak lengkap. Pastikan wallet, nama, dan nomor SIP terisi.',
+        message: error.message,
       });
     }
-
-    // 2. Panggil Service Layer
-    const result = await registerDoctorService(doctorData);
-
-    // 3. Kembalikan Response Sukses
-    res.status(201).json({
-      success: true,
-      message: 'Profil dokter berhasil disimpan di database lokal.',
-      data: result,
-    });
-
-  } catch (error: any) {
-    // Tangani error dari Service (misal: duplikat SIP / Wallet)
-    if (error.message.includes('sudah terdaftar')) {
-      return res.status(409).json({ 
-        success: false, 
-        message: error.message 
-      });
-    }
-    
-    // Jika error lain (misal koneksi database putus), lempar ke Global Error Handler
-    next(error);
   }
-};
+
+  static async getAll(req: Request, res: Response) {
+    try {
+      const doctors = await DoctorService.getAllDoctors();
+      res.status(200).json({ success: true, data: doctors });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+
+  static async getProfile(req: Request, res: Response) {
+    try {
+      const { walletAddress: rawWallet } = req.params;
+      // Normalize possible string | string[] | undefined to a single string
+      const walletAddress = Array.isArray(rawWallet) ? rawWallet[0] : rawWallet;
+
+      if (!walletAddress) {
+        return res.status(400).json({ success: false, message: 'walletAddress is required' });
+      }
+
+      const doctor = await DoctorService.getDoctorByWallet(walletAddress);
+      
+      if (!doctor) {
+        return res.status(404).json({ success: false, message: 'Dokter tidak ditemukan' });
+      }
+
+      res.status(200).json({ success: true, data: doctor });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  }
+}

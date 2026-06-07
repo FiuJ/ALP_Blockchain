@@ -1,7 +1,7 @@
-export interface RegisterDoctorDto {
+export interface IDoctorRegister {
   walletAddress: string;
   name: string;
-  doctorLicenseNumber: string;
+  doctorLicenseNumber: string; // SIP
   specialization: string;
   clinicName: string;
   clinicLocation: string;
