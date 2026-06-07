@@ -76,11 +76,6 @@ export const medicalNftABI = [
       },
       {
         internalType: "string",
-        name: "documentType",
-        type: "string",
-      },
-      {
-        internalType: "string",
         name: "tokenURI",
         type: "string",
       },
@@ -113,11 +108,6 @@ export const medicalNftABI = [
       {
         internalType: "string",
         name: "documentHash",
-        type: "string",
-      },
-      {
-        internalType: "string",
-        name: "documentType",
         type: "string",
       },
       {

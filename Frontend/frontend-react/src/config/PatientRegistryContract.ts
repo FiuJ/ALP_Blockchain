@@ -11,12 +11,6 @@ export const patientRegistryABI = [
         name: "patientAddress",
         type: "address",
       },
-      {
-        indexed: false,
-        internalType: "string",
-        name: "patientName",
-        type: "string",
-      },
     ],
     name: "PatientRegistered",
     type: "event",
@@ -51,16 +45,6 @@ export const patientRegistryABI = [
     name: "patients",
     outputs: [
       {
-        internalType: "string",
-        name: "name",
-        type: "string",
-      },
-      {
-        internalType: "string",
-        name: "patientId",
-        type: "string",
-      },
-      {
         internalType: "bool",
         name: "isRegistered",
         type: "bool",
@@ -70,18 +54,7 @@ export const patientRegistryABI = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "string",
-        name: "name",
-        type: "string",
-      },
-      {
-        internalType: "string",
-        name: "patientId",
-        type: "string",
-      },
-    ],
+    inputs: [],
     name: "registerPatient",
     outputs: [],
     stateMutability: "nonpayable",
