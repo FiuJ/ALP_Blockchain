@@ -42,4 +42,20 @@ export class DoctorService {
       where: { walletAddress },
     });
   }
+
+  // Fungsi tambahan untuk admin memverifikasi dokter
+  static async verifyDoctor(walletAddress: string) {
+    const doctor = await prisma.doctor.findUnique({
+      where: { walletAddress },
+    });
+
+    if (!doctor) {
+      throw new Error('Dokter tidak ditemukan');
+    }
+
+    return await prisma.doctor.update({
+      where: { walletAddress },
+      data: { isVerified: true },
+    });
+  }
 }

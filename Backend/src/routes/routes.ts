@@ -1,18 +1,49 @@
-import { Router } from 'express';
-import { DoctorController } from '../controllers/doctor.controller';
-import { PatientController } from '../controllers/patient.controller';
+import { Router } from "express";
+import {
+  requireWallet,
+  requireAdmin,
+  requireVerifiedDoctor,
+} from "../middlewares/auth.middleware";
+import { DoctorController } from "../controllers/doctor.controller";
+import { PatientController } from "../controllers/patient.controller";
 
 const router = Router();
 
-// Endpoint: POST /api/doctors/register
-// Routes Dokter
-router.post('/doctors/register', DoctorController.register);
-router.get('/doctors', DoctorController.getAll);
-router.get('/doctors/:walletAddress', DoctorController.getProfile);
+// ==========================================
+// 🟢 PUBLIC ROUTES (Tanpa Middleware)
+// ==========================================
+router.get("/doctors", DoctorController.getAll);
+router.get("/patients", PatientController.getAll);
+router.get("/doctors/:walletAddress", DoctorController.getProfile);
+// router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
 
-// Routes Pasien
-router.post('/patients/register', PatientController.register);
-router.get('/patients', PatientController.getAll);
-router.get('/patients/:walletAddress', PatientController.getProfile);
+// ==========================================
+// 🟡 BASIC PROTECTED ROUTES (requireWallet)
+// ==========================================
+router.post("/doctors/register", requireWallet, DoctorController.register);
+router.post("/patients/register", requireWallet, PatientController.register);
+router.get(
+  "/patients/:walletAddress",
+  requireWallet,
+  PatientController.getProfile,
+);
+// router.get('/documents/patient/:walletAddress', requireWallet, DocumentController.getPatientHistory);
+
+// ==========================================
+// 🔴 ADMIN ROUTES (requireAdmin)
+// ==========================================
+router.patch(
+  "/admin/doctors/:walletAddress/verify",
+  requireAdmin,
+  DoctorController.verify,
+);
+
+// ==========================================
+// 🟣 DOCTOR ONLY ROUTES (requireVerifiedDoctor)
+// ==========================================
+// router.post('/documents/draft', requireVerifiedDoctor, DocumentController.createDraft);
+// router.post('/documents/finalize', requireVerifiedDoctor, DocumentController.finalizeDocument);
+// router.patch('/documents/:tokenId/revoke', requireVerifiedDoctor, DocumentController.revokeDocument);
+// router.get('/documents/doctor/:walletAddress', requireVerifiedDoctor, DocumentController.getDoctorHistory);
 
 export default router;

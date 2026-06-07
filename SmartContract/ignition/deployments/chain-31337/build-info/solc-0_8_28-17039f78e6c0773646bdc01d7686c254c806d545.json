@@ -1,6 +1,6 @@
 {
   "_format": "hh3-sol-build-info-1",
-  "id": "solc-0_8_28-0f2e04be8c2c6911f08cf64f01acbd8b94340985",
+  "id": "solc-0_8_28-17039f78e6c0773646bdc01d7686c254c806d545",
   "solcVersion": "0.8.28",
   "solcLongVersion": "0.8.28+commit.7893614a",
   "compilerType": "solc",
@@ -42,7 +42,7 @@
     },
     "sources": {
       "project/contracts/PatientRegistry.sol": {
-        "content": "// SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.28;\n\ncontract PatientRegistry {\n    struct Patient {\n        string name;\n        string patientId;\n        bool isRegistered;\n    }\n\n    mapping(address => Patient) public patients;\n\n    event PatientRegistered(address indexed patientAddress, string patientName);\n\n    function registerPatient(string memory name, string memory patientId) public {\n        require(!patients[msg.sender].isRegistered, \"Patient already registered\");\n\n        patients[msg.sender] = Patient({\n            name: name,\n            patientId: patientId,\n            isRegistered: true\n        });\n\n        emit PatientRegistered(msg.sender, name);\n    }\n\n    // Fungsi eksternal untuk dipanggil oleh kontrak NFT\n    function isRegisteredPatient(address patientAddress) external view returns (bool) {\n        return patients[patientAddress].isRegistered;\n    }\n}"
+        "content": "// SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.28;\n\ncontract PatientRegistry {\n    struct Patient {\n       \n        bool isRegistered;\n    }\n\n    mapping(address => Patient) public patients;\n\n    event PatientRegistered(address indexed patientAddress);\n\n    function registerPatient() public {\n        require(!patients[msg.sender].isRegistered, \"Patient already registered\");\n\n        patients[msg.sender] = Patient({\n            isRegistered: true\n        });\n\n        emit PatientRegistered(msg.sender);\n    }\n\n    // Fungsi eksternal untuk dipanggil oleh kontrak NFT\n    function isRegisteredPatient(address patientAddress) external view returns (bool) {\n        return patients[patientAddress].isRegistered;\n    }\n}"
       }
     }
   }

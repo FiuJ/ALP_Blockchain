@@ -2,39 +2,29 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 export default buildModule("MedicalDocumentSystemModule", (m) => {
-  // 1. Deploy Contract Registry (Tidak butuh parameter constructor)
+  // 1. Deploy Contract Registry
   const doctorRegistry = m.contract("DoctorRegistry");
   const patientRegistry = m.contract("PatientRegistry");
 
-  // 2. Deploy Contract NFT Utama 
-  // Memasukkan objek kontrak registry ke dalam array parameter constructor.
-  // Hardhat Ignition akan otomatis menerjemahkannya menjadi Contract Address.
+  // 2. Deploy Contract NFT Utama
   const medicalDocumentNFT = m.contract("MedicalDocumentNFT", [
     doctorRegistry,
     patientRegistry,
   ]);
 
-  // 3. Mendapatkan akun pertama (deployer) yang otomatis menjadi 'owner'
+  // 3. Mendapatkan akun pertama (deployer)
   const deployer = m.getAccount(0);
 
-  // 4. Memanggil fungsi otomatis setelah deploy (Mendaftarkan Dokter)
-  // Perhatikan: Fungsi ini sekarang dipanggil pada 'doctorRegistry', bukan kontrak NFT
-  const registerAction = m.call(doctorRegistry, "registerDoctor", [
-    "Dr. Admin (Deployer)", 
-    "SIP-00000", 
-    "Sistem Administrator", 
-    "Klinik Pusat", 
-    "Surabaya"
-  ], {
-    id: "registerDeployerAsDoctor", // ID unik untuk melacak eksekusi di Ignition
+  // 4. Memanggil registerDoctor TANPA parameter
+  const registerAction = m.call(doctorRegistry, "registerDoctor", [], {
+    id: "registerDeployerAsDoctor", 
   });
 
-  // 5. Memverifikasi dokter yang baru saja didaftarkan
+  // 5. Memverifikasi deployer yang baru saja didaftarkan
   m.call(doctorRegistry, "verifyDoctor", [deployer], {
     id: "verifyDeployerDoctor",
-    after: [registerAction] // Memastikan verifikasi menunggu registrasi selesai
+    after: [registerAction] // Pastikan verifikasi berjalan setelah registrasi
   });
   
-  // Mengembalikan ketiga kontrak agar address-nya bisa dibaca di konsol/frontend
   return { doctorRegistry, patientRegistry, medicalDocumentNFT };
 });
