@@ -1,5 +1,5 @@
 export const MEDICAL_NFT_ADDRESS =
-  "0x789... (Alamat deploy MedicalDocumentNFT)";
+  "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 
 export const medicalNftABI = [
   {
