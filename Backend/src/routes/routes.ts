@@ -49,5 +49,6 @@ router.patch(
 // router.get('/documents/doctor/:walletAddress', requireVerifiedDoctor, DocumentController.getDoctorHistory);
 router.post('/documents/draft', requireVerifiedDoctor, DocumentController.createDraft);
 router.post('/documents/finalize', requireVerifiedDoctor, DocumentController.finalizeDocument);
+router.patch('/documents/:tokenId/revoke', requireVerifiedDoctor, DocumentController.revokeDocument);
 
 export default router;
