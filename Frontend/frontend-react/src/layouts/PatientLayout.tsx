@@ -10,7 +10,8 @@ import {
   Menu, 
   X,
   Wallet,
-  User
+  User,
+  ShieldAlert // Tambahkan ikon ini
 } from "lucide-react";
 
 interface PatientLayoutProps {
@@ -22,11 +23,13 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const { data: profile } = useQuery({
+  // Tarik isError dan error dari useQuery
+  const { data: profile, isError, error } = useQuery({
     queryKey: ["patientProfile", address],
     queryFn: () => apiService.getProfile(address as string, "patient"),
     enabled: !!address,
-    staleTime: Infinity 
+    staleTime: Infinity,
+    retry: false // Jangan diulang terus-menerus jika memang bukan pasien
   });
 
   const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
@@ -47,7 +50,8 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
               </span>
             </div>
 
-            {address && (
+            {/* Sembunyikan menu navigasi jika ternyata bukan pasien (isError) */}
+            {address && !isError && (
               <div className="hidden md:flex items-center space-x-2">
                 <Link 
                   to="/patient/dashboard" 
@@ -65,7 +69,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
             <div className="hidden md:flex items-center gap-4">
               {address ? (
                 <div className="flex items-center gap-4 bg-gray-50 border border-gray-200 pl-2 pr-4 py-1.5 rounded-full">
-                  {profile && (
+                  {profile && !isError && (
                     <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
                       <User size={14} className="text-emerald-500" />
                       <span className="text-sm font-bold text-gray-700">{profile.name}</span>
@@ -81,6 +85,7 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
                   <button 
                     onClick={disconnectWallet}
                     className="text-gray-400 hover:text-red-500 transition-colors"
+                    title="Disconnect Wallet"
                   >
                     <LogOut size={16} />
                   </button>
@@ -105,13 +110,15 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
 
         {isMobileMenuOpen && address && (
           <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-2 shadow-lg">
-            <Link 
-              to="/patient/dashboard" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-700"
-            >
-              <FolderHeart size={20} /> Brankas Dokumen
-            </Link>
+            {!isError && (
+              <Link 
+                to="/patient/dashboard" 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-700"
+              >
+                <FolderHeart size={20} /> Brankas Dokumen
+              </Link>
+            )}
             <button 
               onClick={() => { disconnectWallet(); setIsMobileMenuOpen(false); }}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 w-full text-left mt-4 border-t border-gray-100"
@@ -123,7 +130,29 @@ export default function PatientLayout({ children }: PatientLayoutProps) {
       </nav>
 
       <main className="flex-grow flex flex-col">
-        {children}
+        {/* Jika terjadi error (bukan pasien), tampilkan pesan penolakan. Jika aman, tampilkan children */}
+        {isError ? (
+          <div className="flex-grow flex items-center justify-center p-4">
+            <div className="bg-red-50 p-8 rounded-3xl max-w-md w-full text-center border border-red-100 shadow-sm animate-in zoom-in-95 duration-300">
+              <ShieldAlert size={56} className="text-red-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-red-700 mb-2">Akses Ditolak</h2>
+              <p className="text-red-600/80 mb-2 text-sm">
+                Dompet Web3 ini tidak terdaftar sebagai <strong>Pasien</strong>. 
+              </p>
+              <p className="text-red-600/70 mb-6 text-xs bg-red-100/50 p-3 rounded-lg border border-red-100">
+                {(error as Error).message || "Silakan gunakan portal yang sesuai (Dokter/Admin) atau daftar terlebih dahulu."}
+              </p>
+              <button
+                onClick={disconnectWallet}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2 mx-auto shadow-md hover:shadow-lg active:scale-95 w-full"
+              >
+                <LogOut size={18} /> Putuskan Koneksi Dompet
+              </button>
+            </div>
+          </div>
+        ) : (
+          children
+        )}
       </main>
     </div>
   );
