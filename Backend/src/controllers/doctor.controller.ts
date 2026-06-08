@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { DoctorService } from "../services/doctor.service";
+import prisma from "../config/prisma";
 
 export class DoctorController {
   static async register(req: Request, res: Response) {
@@ -93,6 +94,29 @@ export class DoctorController {
         success: false,
         message: error.message,
       });
+    }
+  }
+
+  static async getPending(req: Request, res: Response) {
+    try {
+      const pendingDoctors = await prisma.doctor.findMany({
+        where: { isVerified: false },
+        orderBy: { createdAt: "desc" }, // Urutkan dari yang terbaru daftar
+      });
+
+      res.status(200).json({ success: true, data: pendingDoctors });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+  static async getAllForAdmin(req: Request, res: Response) {
+    try {
+      const doctors = await DoctorService.getAllDoctors();
+      res.status(200).json({ success: true, data: doctors });
+    } catch (error: any) {
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
     }
   }
 }

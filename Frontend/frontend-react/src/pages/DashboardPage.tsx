@@ -2,7 +2,7 @@ import React from "react";
 import MainLayout from "../layouts/MainLayout";
 import { useWallet } from "../hooks/useWallet";
 import { useQuery } from "@tanstack/react-query";
-import { apiService } from "../services/api";
+// import { apiService } from "../services/api";
 import {
   FileText,
   CheckCircle,
@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { apiService } from "../services";
 
 export default function DashboardPage() {
   const { address, isRabby, connectWallet } = useWallet();

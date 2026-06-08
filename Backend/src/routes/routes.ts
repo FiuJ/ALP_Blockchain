@@ -14,9 +14,11 @@ const router = Router();
 // 🟢 PUBLIC ROUTES (Tanpa Middleware)
 // ==========================================
 router.get("/doctors", DoctorController.getAll);
-router.get("/patients", PatientController.getAll);
+router.get("/admin/patients", requireAdmin, PatientController.getAll);
 router.get("/doctors/:walletAddress", DoctorController.getProfile);
 router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
+router.get("/patients", PatientController.getAll);
+
 // router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
 
 // ==========================================
@@ -38,6 +40,17 @@ router.patch(
   "/admin/doctors/:walletAddress/verify",
   requireAdmin,
   DoctorController.verify,
+);
+
+router.get(
+  "/admin/doctors/pending",
+  requireAdmin,
+  DoctorController.getPending
+);
+router.get(
+  "/admin/doctors",
+  requireAdmin,
+  DoctorController.getAllForAdmin
 );
 
 // ==========================================

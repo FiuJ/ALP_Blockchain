@@ -58,4 +58,6 @@ export class DoctorService {
       data: { isVerified: true },
     });
   }
+
+  
 }

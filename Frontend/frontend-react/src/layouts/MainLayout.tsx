@@ -7,7 +7,7 @@ function MainLayout({ children }: any) {
       <nav className="border-b border-green-200 backdrop-blur-md bg-white/70 px-10 py-5 flex justify-between items-center">
 
         <h1 className="text-2xl font-bold">
-          ALP Blockchain
+         MediChain
         </h1>
 
         <div className="flex gap-6 items-center">
