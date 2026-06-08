@@ -33,7 +33,7 @@ function App() {
       <Route path="/admin/patients" element={<AdminLayout><AdminAllPatientPage /></AdminLayout>} />
 
       {/* C. Portal Dokter */}
-      <Route path="/doctor/dashboard" element={<MainLayout><DoctorDashboard /></MainLayout>} />
+      <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
       <Route path="/doctor/issue-document" element={<MainLayout><IssueDocument /></MainLayout>} />
       
       {/* D. Portal Pasien */}

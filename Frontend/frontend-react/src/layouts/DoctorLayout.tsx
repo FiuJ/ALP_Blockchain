@@ -1,0 +1,176 @@
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useWallet } from "../hooks/useWallet";
+import { useQuery } from "@tanstack/react-query";
+import { apiService } from "../services/api";
+import { 
+  Stethoscope, 
+  LayoutDashboard, 
+  FileText, 
+  LogOut, 
+  Menu, 
+  X,
+  Wallet,
+  User
+} from "lucide-react";
+
+interface DoctorLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function DoctorLayout({ children }: DoctorLayoutProps) {
+  const { address, disconnectWallet } = useWallet();
+  const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Fetching Profil Dokter untuk Navbar
+  const { data: profile } = useQuery({
+    queryKey: ["doctorProfile", address],
+    queryFn: () => apiService.getProfile(address as string, "doctor"),
+    enabled: !!address,
+    staleTime: Infinity // Jangan fetch ulang terus-menerus selama session aktif
+  });
+
+  const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-800">
+      
+      {/* ==================== NAVBAR ==================== */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            
+            {/* Bagian Kiri: Logo & Brand */}
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
+                <Stethoscope size={24} className="text-white" />
+              </div>
+              <span className="font-bold text-xl text-gray-900 tracking-tight hidden sm:block">
+                Portal Dokter
+              </span>
+            </div>
+
+            {/* Bagian Tengah: Menu Navigasi Desktop */}
+            {address && (
+              <div className="hidden md:flex items-center space-x-2">
+                <Link 
+                  to="/doctor/dashboard" 
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    isActive("/doctor/dashboard") 
+                      ? "bg-blue-50 text-blue-700" 
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  <LayoutDashboard size={18} /> Dashboard
+                </Link>
+                <Link 
+                  to="/doctor/issue-document" 
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    isActive("/doctor/issue-document") 
+                      ? "bg-blue-50 text-blue-700" 
+                      : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  <FileText size={18} /> Terbitkan Surat
+                </Link>
+              </div>
+            )}
+
+            {/* Bagian Kanan: Profil, Wallet Info & Logout */}
+            <div className="hidden md:flex items-center gap-4">
+              {address ? (
+                <div className="flex items-center gap-4 bg-gray-50 border border-gray-200 pl-2 pr-4 py-1.5 rounded-full">
+                  
+                  {/* Info Dokter Singkat */}
+                  {profile && (
+                    <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
+                      <User size={14} className="text-blue-500" />
+                      <span className="text-sm font-bold text-gray-700">{profile.name}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <Wallet size={16} className="text-gray-400" />
+                    <span className="text-sm font-mono font-bold text-gray-600">
+                      {formatAddress(address)}
+                    </span>
+                  </div>
+
+                  <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                  
+                  <button 
+                    onClick={disconnectWallet}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                    title="Disconnect Wallet"
+                  >
+                    <LogOut size={16} />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-sm font-medium text-gray-400 bg-gray-100 px-4 py-1.5 rounded-full">
+                  Not Connected
+                </span>
+              )}
+            </div>
+
+            {/* Tombol Menu Mobile */}
+            <div className="flex items-center md:hidden">
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="text-gray-500 hover:text-gray-900 p-2"
+              >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Menu Mobile Dropdown */}
+        {isMobileMenuOpen && address && (
+          <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-2 shadow-lg">
+            
+            {profile && (
+              <div className="mb-4 px-4 py-3 bg-blue-50 rounded-xl">
+                <p className="font-bold text-blue-900">{profile.name}</p>
+                <p className="text-xs font-mono text-blue-600 mt-1">{address}</p>
+              </div>
+            )}
+
+            <Link 
+              to="/doctor/dashboard" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold ${
+                isActive("/doctor/dashboard") ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <LayoutDashboard size={20} /> Dashboard
+            </Link>
+            <Link 
+              to="/doctor/issue-document" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold ${
+                isActive("/doctor/issue-document") ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <FileText size={20} /> Terbitkan Surat
+            </Link>
+            <button 
+              onClick={() => { disconnectWallet(); setIsMobileMenuOpen(false); }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50 w-full text-left mt-4 border-t border-gray-100"
+            >
+              <LogOut size={20} /> Disconnect Wallet
+            </button>
+          </div>
+        )}
+      </nav>
+
+      {/* ==================== MAIN CONTENT ==================== */}
+      <main className="flex-grow flex flex-col">
+        {children}
+      </main>
+
+    </div>
+  );
+}

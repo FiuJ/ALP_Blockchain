@@ -169,4 +169,19 @@ export const apiService = {
     if (!response.ok) throw new Error(result.message || "Akses Ditolak: Anda bukan Admin.");
     return result.data;
   },
+
+  getDoctorDocuments: async (walletAddress: string) => {
+    // Sesuaikan URL ini dengan route backend yang dibuat Matthew
+    const response = await fetch(`${BASE_URL}/documents/doctor/${walletAddress}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "x-wallet-address": walletAddress 
+      }
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Gagal memuat riwayat dokumen.");
+    return result.data; 
+  },
 };
