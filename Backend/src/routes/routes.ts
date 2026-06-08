@@ -15,6 +15,8 @@ const router = Router();
 router.get("/doctors", DoctorController.getAll);
 router.get("/admin/patients", requireAdmin, PatientController.getAll);
 router.get("/doctors/:walletAddress", DoctorController.getProfile);
+router.get("/patients", PatientController.getAll);
+
 // router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
 
 // ==========================================

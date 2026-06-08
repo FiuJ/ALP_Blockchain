@@ -1,4 +1,4 @@
-import { registerDoctor, registerPatient, getProfile } from "./auth";
+import { registerDoctor, registerPatient, getProfile, getAllPatients } from "./auth";
 import {
   getPendingDoctors,
   verifyDoctor,
@@ -6,6 +6,8 @@ import {
   getAllPatientsAdmin,
 } from "./admin";
 import {
+    createDraft,
+    finalizeDocument,
   getDashboardStats,
   getDoctorDocuments,
   getPatientDocuments,
@@ -25,4 +27,7 @@ export const apiService = {
   getDashboardStats,
   getDoctorDocuments,
   getPatientDocuments,
+  createDraft,
+  finalizeDocument,
+  getAllPatients
 };

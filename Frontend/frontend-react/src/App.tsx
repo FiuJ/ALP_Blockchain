@@ -34,7 +34,7 @@ function App() {
 
       {/* C. Portal Dokter */}
       <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-      <Route path="/doctor/issue-document" element={<MainLayout><IssueDocument /></MainLayout>} />
+      <Route path="/doctor/issue-document" element={<IssueDocument />} />
       
       {/* D. Portal Pasien */}
       <Route path="/patient/dashboard" element={<PatientDashboard />} />

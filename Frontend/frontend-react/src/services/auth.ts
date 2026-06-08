@@ -41,3 +41,13 @@ export const getProfile = async (walletAddress: string, role: "doctor" | "patien
   if (!response.ok) throw new Error(result.message || "Gagal mengambil data profil");
   return result.data;
 };
+
+export const getAllPatients = async () => {
+  const response = await fetch(`${BASE_URL}/patients`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || "Gagal mengambil data pasien");
+  return result.data;
+};
