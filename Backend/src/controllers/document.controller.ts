@@ -10,7 +10,7 @@ export class DocumentController {
   static async createDraft(req: AuthRequest, res: Response): Promise<any> {
     try {
       const { patientWallet, documentType, documentDescription } = req.body;
-      const issuerWallet = req.user?.walletAddress;
+      const issuerWallet = req.headers["x-wallet-address"] as string;
 
       if (!issuerWallet || !patientWallet) {
         return res.status(400).json({ error: "Data dompet tidak lengkap." });
@@ -34,7 +34,7 @@ export class DocumentController {
 
   static async finalizeDocument(req: AuthRequest, res: Response): Promise<any> {
     try {
-      const issuerWallet = req.user?.walletAddress;
+      const issuerWallet = req.headers["x-wallet-address"] as string;
       if (!issuerWallet) return res.status(400).json({ error: "Sesi dokter tidak valid." });
 
       const newDocument = await DocumentService.saveDocument(req.body, issuerWallet);
@@ -44,7 +44,7 @@ export class DocumentController {
         document: newDocument
       });
     } catch (error) {
-      return res.status(500).json({ error: "Gagal menyimpan dokumen." });
+      return res.status(500).json({ error: error instanceof Error ? error.message : "Gagal menyimpan dokumen." });
     }
   }
 
@@ -77,7 +77,7 @@ export class DocumentController {
   static async revokeDocument(req: AuthRequest, res: Response): Promise<any> {
     try {
       const tokenId = req.params.tokenId as string;
-      const issuerWallet = req.user?.walletAddress;
+      const issuerWallet = req.headers["x-wallet-address"] as string;
 
       if (!issuerWallet) return res.status(400).json({ error: "Autentikasi diperlukan." });
 
