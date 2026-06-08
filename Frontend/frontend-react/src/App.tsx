@@ -37,7 +37,7 @@ function App() {
       <Route path="/doctor/issue-document" element={<MainLayout><IssueDocument /></MainLayout>} />
       
       {/* D. Portal Pasien */}
-      <Route path="/patient/dashboard" element={<MainLayout><PatientDashboard /></MainLayout>} />
+      <Route path="/patient/dashboard" element={<PatientDashboard />} />
 
       {/* E. Portal Verifikator (HRD/Publik) */}
       <Route path="/verify" element={<MainLayout><ScannerPage /></MainLayout>} />

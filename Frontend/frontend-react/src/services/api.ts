@@ -161,27 +161,51 @@ export const apiService = {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "x-wallet-address": adminWalletAddress 
-      }
+        "x-wallet-address": adminWalletAddress,
+      },
     });
 
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || "Akses Ditolak: Anda bukan Admin.");
+    if (!response.ok)
+      throw new Error(result.message || "Akses Ditolak: Anda bukan Admin.");
     return result.data;
   },
 
   getDoctorDocuments: async (walletAddress: string) => {
     // Sesuaikan URL ini dengan route backend yang dibuat Matthew
-    const response = await fetch(`${BASE_URL}/documents/doctor/${walletAddress}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "x-wallet-address": walletAddress 
-      }
-    });
+    const response = await fetch(
+      `${BASE_URL}/documents/doctor/${walletAddress}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wallet-address": walletAddress,
+        },
+      },
+    );
 
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || "Gagal memuat riwayat dokumen.");
-    return result.data; 
+    if (!response.ok)
+      throw new Error(result.message || "Gagal memuat riwayat dokumen.");
+    return result.data;
+  },
+
+  // [PASIEN] Mengambil brankas dokumen milik pasien
+  getPatientDocuments: async (walletAddress: string) => {
+    const response = await fetch(
+      `${BASE_URL}/documents/patient/${walletAddress}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wallet-address": walletAddress,
+        },
+      },
+    );
+
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Gagal memuat brankas dokumen.");
+    return result.data;
   },
 };
