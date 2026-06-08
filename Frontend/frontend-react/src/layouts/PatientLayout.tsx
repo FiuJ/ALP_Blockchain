@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useWallet } from "../hooks/useWallet";
 import { useQuery } from "@tanstack/react-query";
-import { apiService } from "../services/api";
+// import { apiService } from "../services/api";
 import { 
   HeartPulse, 
   FolderHeart, 
@@ -13,6 +13,7 @@ import {
   User,
   ShieldAlert // Tambahkan ikon ini
 } from "lucide-react";
+import { apiService } from "../services";
 
 interface PatientLayoutProps {
   children: React.ReactNode;

@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "../hooks/useWallet";
-import { apiService } from "../services/api";
+// import { apiService } from "../services/api";
 import DoctorLayout from "../layouts/DoctorLayout";
 import {
   FileText,
@@ -18,6 +18,7 @@ import {
   BadgeCheck,
   LogOut,
 } from "lucide-react";
+import { apiService } from "../services";
 
 export default function DoctorDashboard() {
   const { address, connectWallet, disconnectWallet } = useWallet();

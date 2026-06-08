@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { createWalletClient, createPublicClient, custom } from 'viem';
 import { hardhat } from 'viem/chains'; // Ganti ke sepolia/mainnet saat production
-import { apiService, type DoctorData, type PatientData } from '../services/api';
+// import { apiService, type DoctorData, type PatientData } from '../services/api';
 import { PATIENT_REGISTRY_ADDRESS, patientRegistryABI } from '../config/PatientRegistryContract';
 import { DOCTOR_REGISTRY_ADDRESS, doctorRegistryABI } from '../config/DoctorRegistryContractConfig';
+import { apiService, type DoctorData, type PatientData } from '../services';
 
 
 declare global {

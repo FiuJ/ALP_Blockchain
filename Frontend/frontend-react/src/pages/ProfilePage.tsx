@@ -1,8 +1,9 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiService } from "../services/api";
+// import { apiService } from "../services/api";
 import { User, Activity, Building2, Wallet, ShieldCheck, Loader2 } from "lucide-react";
 import { useWallet } from "../hooks/useWallet";
+import { apiService } from "../services";
 
 export default function ProfilePage() {
   const { address } = useWallet();

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "../hooks/useWallet";
-import { apiService } from "../services/api";
+// import { apiService } from "../services/api";
 import { 
   ShieldAlert, 
   Wallet, 
@@ -13,6 +13,7 @@ import {
   Users,
   Clock
 } from "lucide-react";
+import { apiService } from "../services";
 
 export default function AdminAllDoctorsPage() {
   const { address, isRabby, connectWallet } = useWallet();

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '../hooks/useWallet';
-import { apiService } from '../services/api';
+// import { apiService } from '../services/api';
 import PatientLayout from '../layouts/PatientLayout';
 import { 
   ShieldCheck, 
@@ -14,6 +14,7 @@ import {
   Loader2,
   XCircle
 } from 'lucide-react';
+import { apiService } from '../services';
 
 export default function PatientDashboard() {
   const { address, connectWallet } = useWallet();
