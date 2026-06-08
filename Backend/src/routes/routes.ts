@@ -6,6 +6,7 @@ import {
 } from "../middlewares/auth.middleware";
 import { DoctorController } from "../controllers/doctor.controller";
 import { PatientController } from "../controllers/patient.controller";
+import { DocumentController } from "../controllers/document.controller";
 
 const router = Router();
 
@@ -15,6 +16,7 @@ const router = Router();
 router.get("/doctors", DoctorController.getAll);
 router.get("/patients", PatientController.getAll);
 router.get("/doctors/:walletAddress", DoctorController.getProfile);
+router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
 // router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
 
 // ==========================================
@@ -45,5 +47,7 @@ router.patch(
 // router.post('/documents/finalize', requireVerifiedDoctor, DocumentController.finalizeDocument);
 // router.patch('/documents/:tokenId/revoke', requireVerifiedDoctor, DocumentController.revokeDocument);
 // router.get('/documents/doctor/:walletAddress', requireVerifiedDoctor, DocumentController.getDoctorHistory);
+router.post('/documents/draft', requireVerifiedDoctor, DocumentController.createDraft);
+router.post('/documents/finalize', requireVerifiedDoctor, DocumentController.finalizeDocument);
 
 export default router;
