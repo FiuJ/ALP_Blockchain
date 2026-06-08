@@ -12,6 +12,9 @@ import PatientDashboard from "./pages/PatientDashboard";
 import ScannerPage from "./pages/ScannerPage";
 import VerifyResultPage from "./pages/VerifyResultPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminAllDoctorsPage from "./pages/AdminAllDoctorPage";
+import AdminAllPatientPage from "./pages/AdminAllPatientPage";
 
 function App() {
   return (
@@ -24,7 +27,10 @@ function App() {
       <Route path="/profile" element={<ProfilePage />} />
 
       {/* B. Portal Admin */}
-      <Route path="/admin/dashboard" element={<MainLayout><AdminDashboard /></MainLayout>} />
+      <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+      <Route path="/admin/doctors" element={<AdminLayout><AdminAllDoctorsPage /></AdminLayout>} />
+
+      <Route path="/admin/patients" element={<AdminLayout><AdminAllPatientPage /></AdminLayout>} />
 
       {/* C. Portal Dokter */}
       <Route path="/doctor/dashboard" element={<MainLayout><DoctorDashboard /></MainLayout>} />

@@ -19,12 +19,13 @@ export const apiService = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-wallet-address": walletAddress
+        "x-wallet-address": walletAddress,
       },
-      body: JSON.stringify(doctorData)
+      body: JSON.stringify(doctorData),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "Gagal menyimpan ke database");
+    if (!response.ok)
+      throw new Error(data.message || "Gagal menyimpan ke database");
     return data;
   },
 
@@ -33,30 +34,35 @@ export const apiService = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-wallet-address": walletAddress
+        "x-wallet-address": walletAddress,
       },
-      body: JSON.stringify(patientData)
+      body: JSON.stringify(patientData),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "Gagal menyimpan ke database");
+    if (!response.ok)
+      throw new Error(data.message || "Gagal menyimpan ke database");
     return data;
   },
 
   getProfile: async (walletAddress: string, role: "doctor" | "patient") => {
     // Sesuaikan URL berdasarkan role
-    const endpoint = role === "doctor" ? `/doctors/${walletAddress}` : `/patients/${walletAddress}`;
-    
+    const endpoint =
+      role === "doctor"
+        ? `/doctors/${walletAddress}`
+        : `/patients/${walletAddress}`;
+
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "x-wallet-address": walletAddress // Wajib disertakan untuk menembus Middleware Level 1
-      }
+        "x-wallet-address": walletAddress, // Wajib disertakan untuk menembus Middleware Level 1
+      },
     });
 
     const result = await response.json();
-    if (!response.ok) throw new Error(result.message || "Gagal mengambil data profil");
-    
+    if (!response.ok)
+      throw new Error(result.message || "Gagal mengambil data profil");
+
     return result.data; // Asumsi backend Anda mengirimkan data di dalam properti "data"
   },
 
@@ -66,8 +72,8 @@ export const apiService = {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "x-wallet-address": walletAddress
-      }
+        "x-wallet-address": walletAddress,
+      },
     });
 
     if (!response.ok) {
@@ -77,13 +83,90 @@ export const apiService = {
       return {
         stats: { total: 5, verified: 4, revoked: 1 },
         documents: [
-          { patient: "Budi Santoso", doctor: "dr. Andi", status: "Verified", createdAt: "2026-06-07T10:00:00Z" },
-          { patient: "Siti Aminah", doctor: "dr. Andi", status: "Revoked", createdAt: "2026-06-06T14:30:00Z" }
-        ]
+          {
+            patient: "Budi Santoso",
+            doctor: "dr. Andi",
+            status: "Verified",
+            createdAt: "2026-06-07T10:00:00Z",
+          },
+          {
+            patient: "Siti Aminah",
+            doctor: "dr. Andi",
+            status: "Revoked",
+            createdAt: "2026-06-06T14:30:00Z",
+          },
+        ],
       };
     }
 
     const result = await response.json();
     return result.data;
-  }
+  },
+
+  getPendingDoctors: async (adminWalletAddress: string) => {
+    const response = await fetch(`${BASE_URL}/admin/doctors/pending`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "x-wallet-address": adminWalletAddress,
+      },
+    });
+
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Akses Ditolak: Anda bukan Admin.");
+    return result.data;
+  },
+
+  // [ADMIN] Memverifikasi dokter
+  verifyDoctor: async (
+    adminWalletAddress: string,
+    doctorWalletAddress: string,
+  ) => {
+    const response = await fetch(
+      `${BASE_URL}/admin/doctors/${doctorWalletAddress}/verify`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-wallet-address": adminWalletAddress,
+        },
+      },
+    );
+
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Gagal memverifikasi dokter.");
+    return result.data;
+  },
+  // [ADMIN] Mengambil SEMUA data dokter (Master Data)
+  getAllDoctorsAdmin: async (adminWalletAddress: string) => {
+    const response = await fetch(`${BASE_URL}/admin/doctors`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "x-wallet-address": adminWalletAddress,
+      },
+    });
+
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.message || "Akses Ditolak: Anda bukan Admin.");
+    return result.data;
+  },
+
+  // [ADMIN] Mengambil SEMUA data pasien
+  getAllPatientsAdmin: async (adminWalletAddress: string) => {
+    const response = await fetch(`${BASE_URL}/admin/patients`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "x-wallet-address": adminWalletAddress 
+      }
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Akses Ditolak: Anda bukan Admin.");
+    return result.data;
+  },
 };
