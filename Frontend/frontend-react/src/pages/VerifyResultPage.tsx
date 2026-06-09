@@ -34,7 +34,7 @@ export default function VerifyResultPage() {
 
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [isWriting, setIsWriting] = useState(false);
-
+console.log(historyList)
   // 👇 1. STATE BARU: Menyimpan detail event Revoke dari Blockchain
   const [revokeDetails, setRevokeDetails] = useState<{
     txHash: string;
@@ -397,8 +397,10 @@ export default function VerifyResultPage() {
               <div className="space-y-1">
                 {historyList.map((record, i) => {
                   const verifierAddress = record.verifier || record[0];
-                  const timestamp = Number(record.timestamp || record[1]);
-                  const dateObj = new Date(timestamp * 1000);
+                const timestampMs = Number(record.verifiedAt) * 1000;
+                  
+                  // 3. Buat objek Date JavaScript
+                  const dateObj = new Date(timestampMs);
 
                   return (
                     <div
@@ -417,14 +419,19 @@ export default function VerifyResultPage() {
                         </p>
                       </div>
                       <div className="text-sm font-bold text-gray-700 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 text-center">
+                        {/* 4. Tampilkan Tanggal */}
                         {dateObj.toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
-                        })}{" "}
+                        })}
                         <br className="hidden md:block" />
                         <span className="text-xs text-gray-400 font-normal">
-                          {dateObj.toLocaleTimeString("id-ID")} WIB
+                          {/* 5. Tampilkan Jam */}
+                          {dateObj.toLocaleTimeString("id-ID", {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })} WIB
                         </span>
                       </div>
                     </div>

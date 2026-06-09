@@ -1,11 +1,11 @@
 {
   "_format": "hh3-sol-build-info-1",
-  "id": "solc-0_8_28-3c20117faa0ec00083ef79b828df6d8ada04eab3",
+  "id": "solc-0_8_28-342e38ff27d5e86c1d482f8139b0ad9fcb7c23b1",
   "solcVersion": "0.8.28",
   "solcLongVersion": "0.8.28+commit.7893614a",
   "compilerType": "solc",
   "toolVersions": {
-    "hardhat": "3.6.0"
+    "hardhat": "3.9.0"
   },
   "userSourceNameMap": {
     "contracts/MedicalDocumentNFT.sol": "project/contracts/MedicalDocumentNFT.sol"
