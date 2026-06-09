@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+// 👇 Tambahkan useQueryClient untuk me-refresh data
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWallet } from "../hooks/useWallet";
-// import { apiService } from "../services/api";
 import DoctorLayout from "../layouts/DoctorLayout";
 import {
   FileText,
@@ -17,16 +17,28 @@ import {
   Building2,
   BadgeCheck,
   LogOut,
-  Eye, // 👈 Import ikon Eye (Mata)
-  X, // 👈 Import ikon X (Close)
+  Eye,
+  X,
+  AlertOctagon // 👈 Icon baru untuk tombol Revoke
 } from "lucide-react";
+
 import { apiService } from "../services";
+// 👇 Import viem & config smart contract
+import { createWalletClient, createPublicClient, custom, publicActions } from 'viem';
+import { hardhat } from 'viem/chains';
+import { MEDICAL_NFT_ADDRESS, medicalNftABI } from '../config/MedicalDocumentContractConfig';
+
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL?.replace("/api", "") ||
   "http://localhost:5000";
+
 export default function DoctorDashboard() {
   const { address, connectWallet, disconnectWallet } = useWallet();
+  const queryClient = useQueryClient(); // 👈 Inisialisasi Query Client
+  
   const [previewDoc, setPreviewDoc] = useState<any | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null); // 👈 State untuk loading tombol revoke
+
   // 1. Fetching Profil Dokter
   const {
     data: profile,
@@ -51,9 +63,65 @@ export default function DoctorDashboard() {
 
   // Kalkulasi Metrik
   const totalIssued = documents.length;
-  const activeDocs = documents.filter((doc: any) => doc.isValid).length;
+  const activeDocs = documents.filter((doc: any) => !doc.isRevoked).length; // 👈 Perbaikan logic active docs
   const revokedDocs = totalIssued - activeDocs;
-  console.log(documents);
+
+  // ==========================================
+  // FUNGSI HANDLE REVOKE (SC + BACKEND)
+  // ==========================================
+  const handleRevoke = async (tokenId: string) => {
+    if (!address) return alert("Wallet belum terhubung.");
+    
+    // Konfirmasi ganda untuk mencegah salah klik
+    const confirmRevoke = window.confirm(
+      "PERINGATAN: Apakah Anda yakin ingin membatalkan dokumen ini?\n\nTindakan ini bersifat permanen di Blockchain dan tidak dapat dibatalkan."
+    );
+    if (!confirmRevoke) return;
+
+    setRevokingId(tokenId);
+
+    try {
+      // 1. EKSEKUSI SMART CONTRACT 
+      const walletClient = createWalletClient({
+        chain: hardhat,
+        transport: custom(window.ethereum!)
+      }).extend(publicActions);
+
+      const publicClient = createPublicClient({
+        chain: hardhat,
+        transport: custom(window.ethereum!)
+      });
+
+      // Panggil fungsi revoke di Smart Contract
+      const txHash = await walletClient.writeContract({
+        address: MEDICAL_NFT_ADDRESS as `0x${string}`,
+        abi: medicalNftABI,
+        functionName: 'revokeDocument', // Pastikan nama fungsi ini sesuai dengan SC Anda
+        args: [BigInt(tokenId)],
+        account: address as `0x${string}`
+      });
+
+      // Tunggu hingga transaksi selesai ditambang
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      // 2. EKSEKUSI DATABASE BACKEND
+      await apiService.revokeDocument(tokenId, address);
+
+      // 3. REFRESH DATA TABEL
+      queryClient.invalidateQueries({ queryKey: ["doctorDocuments", address] });
+      alert("✅ Dokumen berhasil dibatalkan secara permanen!");
+
+    } catch (error: any) {
+      console.error("Gagal membatalkan dokumen:", error);
+      if (error.code === 4001 || error.message?.includes('User rejected')) {
+        alert("Transaksi dibatalkan oleh pengguna.");
+      } else {
+        alert(error.message || "Terjadi kesalahan saat membatalkan dokumen.");
+      }
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   // ==========================================
   // STATE 1: WALLET BELUM TERKONEKSI
@@ -62,6 +130,7 @@ export default function DoctorDashboard() {
     return (
       <DoctorLayout>
         <div className="flex-grow flex items-center justify-center p-4">
+          {/* ... (Kode State 1 Tetap Sama) ... */}
           <div className="bg-white p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-gray-100">
             <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <ShieldAlert size={40} />
@@ -91,6 +160,7 @@ export default function DoctorDashboard() {
   if (isProfileError) {
     return (
       <DoctorLayout>
+        {/* ... (Kode State 2 Tetap Sama) ... */}
         <div className="flex-grow flex items-center justify-center p-4">
           <div className="bg-red-50 p-8 rounded-3xl max-w-md w-full text-center border border-red-100 shadow-sm animate-in zoom-in-95 duration-300">
             <ShieldAlert size={56} className="text-red-500 mx-auto mb-4" />
@@ -98,13 +168,11 @@ export default function DoctorDashboard() {
               Akses Ditolak
             </h2>
             <p className="text-red-600/80 mb-2 text-sm">
-              Dompet Web3 ini tidak terdaftar sebagai <strong>Dokter</strong>.{" "}
-              {/* 👈 UBAH JADI DOKTER */}
+              Dompet Web3 ini tidak terdaftar sebagai <strong>Dokter</strong>.
             </p>
             <p className="text-red-600/70 mb-6 text-xs bg-red-100/50 p-3 rounded-lg border border-red-100">
-              {/* 👇 GUNAKAN profileError, BUKAN isProfileError */}
               {(profileError as Error)?.message ||
-                "Silakan gunakan portal yang sesuai (Pasien/Admin) atau daftar terlebih dahulu."}
+                "Silakan gunakan portal yang sesuai atau daftar terlebih dahulu."}
             </p>
             <button
               onClick={disconnectWallet}
@@ -124,6 +192,7 @@ export default function DoctorDashboard() {
   return (
     <DoctorLayout>
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 w-full font-sans">
+        {/* ... (Banner dan Metrics Cards Tetap Sama) ... */}
         {/* Banner Welcome & Verifikasi */}
         <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm mb-10 relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="absolute -right-10 -top-10 text-blue-50/50 rotate-12 scale-150 z-0 pointer-events-none">
@@ -239,8 +308,7 @@ export default function DoctorDashboard() {
                 <tr className="bg-white border-b border-gray-100 text-gray-500 text-sm uppercase tracking-wider">
                   <th className="px-8 py-4 font-semibold">ID Dokumen</th>
                   <th className="px-8 py-4 font-semibold">Tanggal Rilis</th>
-                                    <th className="px-8 py-4 font-semibold">Tanggal Expire</th>
-
+                  <th className="px-8 py-4 font-semibold">Tanggal Expire</th>
                   <th className="px-8 py-4 font-semibold">Pasien Tujuan</th>
                   <th className="px-8 py-4 font-semibold">Status</th>
                   <th className="px-8 py-4 font-semibold text-right">Aksi</th>
@@ -249,7 +317,7 @@ export default function DoctorDashboard() {
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-16 text-gray-500">
+                    <td colSpan={6} className="text-center py-16 text-gray-500">
                       <Loader2
                         size={32}
                         className="animate-spin text-blue-600 mx-auto mb-3"
@@ -259,7 +327,7 @@ export default function DoctorDashboard() {
                   </tr>
                 ) : documents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-16">
+                    <td colSpan={6} className="text-center py-16">
                       <FileText
                         size={48}
                         className="text-gray-300 mx-auto mb-3"
@@ -288,18 +356,16 @@ export default function DoctorDashboard() {
                           year: "numeric",
                         })}
                       </td>
-                       <td className="px-8 py-5 text-sm text-gray-600">
-                        {new Date(doc.expiredAt).toLocaleDateString("id-ID", {
+                      <td className="px-8 py-5 text-sm text-gray-600">
+                        {doc.expiredAt ? new Date(doc.expiredAt).toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
-                        })}
+                        }) : "-"}
                       </td>
                       <td className="px-8 py-5">
                         <span className="font-mono text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
-                          {/* substring */}
-
-                          {doc.patientWallet}
+                          {doc.patientWallet.substring(0, 6)}...{doc.patientWallet.substring(38)}
                         </span>
                       </td>
                       <td className="px-8 py-5">
@@ -313,14 +379,29 @@ export default function DoctorDashboard() {
                           </span>
                         )}
                       </td>
-                      <td className="px-8 py-5 text-right">
-                        {/* 👇 UBAH TOMBOL INI UNTUK MEMBUKA MODAL PREVIEW */}
+                      {/* 👇 UPDATE BAGIAN ACTION BUTTONS */}
+                      <td className="px-8 py-5 text-right flex justify-end gap-2">
                         <button
                           onClick={() => setPreviewDoc(doc)}
-                          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-bold transition-colors bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-transparent hover:border-blue-100 mr-2"
+                          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-bold transition-colors bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-transparent hover:border-blue-100"
                         >
                           <Eye size={16} /> Preview
                         </button>
+
+                        {/* Tombol Revoke hanya muncul jika dokumen masih aktif */}
+                        {!doc.isRevoked && (
+                          <button
+                            onClick={() => handleRevoke(doc.tokenId)}
+                            disabled={revokingId === doc.tokenId}
+                            className="inline-flex items-center gap-1.5 text-rose-600 hover:text-white text-sm font-bold transition-colors bg-rose-50 hover:bg-rose-600 px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {revokingId === doc.tokenId ? (
+                              <><Loader2 size={16} className="animate-spin" /> Memproses...</>
+                            ) : (
+                              <><AlertOctagon size={16} /> Revoke</>
+                            )}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -331,11 +412,10 @@ export default function DoctorDashboard() {
         </div>
       </div>
 
+      {/* ... (Modal Preview Tetap Sama) ... */}
       {previewDoc && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-            
-            {/* Header Modal */}
             <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/80">
               <div>
                 <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
@@ -351,8 +431,6 @@ export default function DoctorDashboard() {
                 <X size={24} />
               </button>
             </div>
-
-            {/* Konten PDF Iframe */}
             <div className="flex-grow bg-gray-200/50 p-2 md:p-6">
               <iframe 
                 src={`${BACKEND_URL}/files/${previewDoc.filePath}`} 
@@ -360,8 +438,6 @@ export default function DoctorDashboard() {
                 title="PDF Preview"
               />
             </div>
-
-            {/* Footer Modal (Aksi Lanjutan) */}
             <div className="p-5 border-t border-gray-100 bg-white flex justify-end gap-3">
               <button 
                 onClick={() => setPreviewDoc(null)} 
@@ -376,7 +452,6 @@ export default function DoctorDashboard() {
                 Ke Halaman Detail <ExternalLink size={16} />
               </Link>
             </div>
-
           </div>
         </div>
       )}

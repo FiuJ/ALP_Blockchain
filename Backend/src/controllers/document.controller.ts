@@ -8,12 +8,13 @@ export interface AuthRequest extends Request {
 }
 
 export class DocumentController {
- 
-
   static async createDraft(req: AuthRequest, res: Response): Promise<any> {
     try {
       // Ambil restDays dari body
-      const { patientWallet, documentType, documentDescription, restDays } = req.body;
+      const { patientWallet, documentType, documentDescription, restDays } =
+        req.body;
+
+        console.log("body",req.body)
       const issuerWallet = req.headers["x-wallet-address"] as string;
 
       if (!issuerWallet || !patientWallet) {
@@ -21,16 +22,15 @@ export class DocumentController {
       }
 
       // Pastikan restDays dikonversi ke angka
-      const parsedRestDays = parseInt(restDays, 10) || 0;
 
-      // Panggil Service untuk buat PDF. 
+      // Panggil Service untuk buat PDF.
       // (Kita tambahkan parsedRestDays agar tertulis di PDF jika diperlukan)
       const result = await DocumentService.createDraftPdf(
         patientWallet,
         issuerWallet,
         documentType,
         documentDescription,
-        parsedRestDays
+        restDays,
       );
 
       return res.status(200).json({
@@ -40,7 +40,7 @@ export class DocumentController {
         documentType,
         documentDescription,
         patientWallet,
-        restDays: parsedRestDays // Kembalikan ke Frontend agar bisa dipakai saat Finalize
+        restDays, // Kembalikan ke Frontend agar bisa dipakai saat Finalize
       });
     } catch (error) {
       return res.status(500).json({ error: "Gagal membuat draft dokumen." });
@@ -63,12 +63,10 @@ export class DocumentController {
         document: newDocument,
       });
     } catch (error) {
-      return res
-        .status(500)
-        .json({
-          error:
-            error instanceof Error ? error.message : "Gagal menyimpan dokumen.",
-        });
+      return res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Gagal menyimpan dokumen.",
+      });
     }
   }
 
@@ -77,7 +75,7 @@ export class DocumentController {
       const documentHash = req.params.documentHash as string;
       const document = await DocumentService.verifyDocumentData(documentHash);
       console.log("✅ Verifikasi berhasil untuk hash:", documentHash);
-      console.log("📄 Detail dokumen:", document)
+      console.log("📄 Detail dokumen:", document);
       return res.status(200).json({
         status: "AUTHENTIC",
         message: "Dokumen asli dan terverifikasi.",

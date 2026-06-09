@@ -74,7 +74,7 @@ export const createDraft = async (
     patientWallet: string;
     documentType: string;
     documentDescription: string;
-   
+    restDays: number; // 👈 TAMBAHKAN INI
   },
 ) => {
   const response = await fetch(`${BASE_URL}/documents/draft`, {
@@ -128,4 +128,20 @@ export const verifyDocument = async (documentHash: string) => {
   if (!response.ok)
     throw new Error(data.message || "Gagal memverifikasi dokumen.");
   return data;
-}
+};
+
+export const revokeDocument = async (tokenId: string, doctorWallet: string) => {
+  const response = await fetch(`${BASE_URL}/documents/${tokenId}/revoke`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "x-wallet-address": doctorWallet,
+    },
+  });
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(
+      data.error || data.message || "Gagal melakukan revoke di database.",
+    );
+  return data;
+};

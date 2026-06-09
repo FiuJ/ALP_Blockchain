@@ -69,6 +69,7 @@ export default function IssueDocument() {
         patientWallet: selectedPatient.walletAddress, 
         documentType,
         documentDescription,
+        restDays
      
       });
       console.log("Draft Response:", draftRes);

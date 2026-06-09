@@ -10,9 +10,9 @@ import {
   Fingerprint,
   Loader2,
   ArrowLeft,
+  ExternalLink, // 👈 Tambahan ikon
 } from "lucide-react";
 
-// Gunakan apiService yang sudah kita buat sebelumnya (jangan gunakan axios manual)
 import { apiService } from "../services";
 import { useWallet } from "../hooks/useWallet";
 import {
@@ -22,7 +22,7 @@ import {
 
 export default function VerifyResultPage() {
   const params = useParams();
-  const { documentHash } = useParams(); // Sesuaikan dengan nama parameter di Route Anda
+  const { documentHash } = useParams();
   const { address, connectWallet } = useWallet();
   const [doctorName, setDoctorName] = useState<string>("Memuat nama...");
   const [patientName, setPatientName] = useState<string>("Memuat nama...");
@@ -35,35 +35,26 @@ export default function VerifyResultPage() {
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [isWriting, setIsWriting] = useState(false);
 
+  // 👇 1. STATE BARU: Menyimpan detail event Revoke dari Blockchain
+  const [revokeDetails, setRevokeDetails] = useState<{
+    txHash: string;
+    timestamp: number;
+  } | null>(null);
+
   // =========================================================
   // 1. Verifikasi Hash File PDF ke Backend
   // =========================================================
   useEffect(() => {
-    console.log("=== DEBUGGING HALAMAN VERIFIKASI ===");
-    console.log("1. Seluruh Parameter URL (useParams):", params);
-    console.log("2. Nilai documentHash yang diekstrak:", documentHash);
     const verifyDoc = async () => {
-      if (!documentHash) {
-        console.warn(
-          "🛑 PROSES BERHENTI: 'documentHash' kosong atau undefined. Cek pengaturan nama parameter di Route Anda (misal di App.tsx)!",
-        );
-        return;
-      }
+      if (!documentHash) return;
 
       try {
-        // Gunakan apiService yang strukturnya sudah rapi
         const res = await apiService.verifyDocument(documentHash);
-        console.log("✅ SUKSES: Respons dari Backend:", res);
         setData(res.document);
-
-        // Pengecekan status yang benar berdasarkan respons Backend Anda ("AUTHENTIC")
         setStatus(res.status === "AUTHENTIC" ? "valid" : "revoked");
-
-        // Simpan tokenId dari dalam objek document
         setTokenId(res.document.tokenId);
       } catch (error: any) {
-        console.error("❌ ERROR: Gagal memanggil API:", error);
-        // Menangkap error dari apiService
+        console.error("❌ ERROR:", error);
         const errorMessage = error.message || "";
         if (errorMessage.includes("MANIPULASI")) {
           setStatus("tampered");
@@ -77,7 +68,6 @@ export default function VerifyResultPage() {
         }
       }
     };
-
     verifyDoc();
   }, [documentHash]);
 
@@ -86,21 +76,17 @@ export default function VerifyResultPage() {
   // =========================================================
   useEffect(() => {
     const fetchNames = async () => {
-      // Pastikan data dokumen dan wallet sudah tersedia
       if (!data || !data.issuerWallet || !data.patientWallet) return;
-
-     try {
-        // 1. Tembak API Dokter
+      try {
         const docRes = await fetch(
           `http://localhost:5000/api/doctors/${data.issuerWallet}`,
           {
             headers: {
               "Content-Type": "application/json",
-              "x-wallet-address": data.issuerWallet, // Header untuk Dokter
+              "x-wallet-address": data.issuerWallet,
             },
-          }
+          },
         );
-
         if (docRes.ok) {
           const docJson = await docRes.json();
           setDoctorName(docJson.data?.name || "Dokter Terdaftar");
@@ -108,17 +94,15 @@ export default function VerifyResultPage() {
           setDoctorName("Nama dokter tidak ditemukan");
         }
 
-        // 2. Tembak API Pasien
         const patRes = await fetch(
           `http://localhost:5000/api/patients/${data.patientWallet}`,
           {
             headers: {
               "Content-Type": "application/json",
-              "x-wallet-address": data.patientWallet, // Header untuk Pasien
+              "x-wallet-address": data.patientWallet,
             },
-          }
+          },
         );
-
         if (patRes.ok) {
           const patJson = await patRes.json();
           setPatientName(patJson.data?.name || "Pasien Terdaftar");
@@ -126,56 +110,75 @@ export default function VerifyResultPage() {
           setPatientName("Nama pasien tidak ditemukan");
         }
       } catch (error) {
-        console.error("Gagal mengambil nama dari API:", error);
         setDoctorName("Gagal memuat API");
         setPatientName("Gagal memuat API");
       }
     };
-
     fetchNames();
-  }, [data]); // Effect ini akan berjalan setiap kali 'data' dokumen berhasil didapatkan
+  }, [data]);
 
   // =========================================================
-  // 2. Ambil History LANGSUNG dari Smart Contract (VIEM READ)
+  // 2. MEMBACA DATA & EVENT LANGSUNG DARI SMART CONTRACT
   // =========================================================
-  const fetchHistoryFromSC = async (id: string) => {
+  const fetchOnChainData = async (id: string) => {
     try {
       const publicClient = createPublicClient({
         chain: hardhat,
-        // Fallback: Jika publik (HRD) tidak punya MetaMask, gunakan RPC Lokal
         transport: window.ethereum
           ? custom(window.ethereum)
           : http("http://127.0.0.1:8545"),
       });
 
+      // A. Membaca History Verifikasi
       const history = (await publicClient.readContract({
         address: MEDICAL_NFT_ADDRESS as `0x${string}`,
         abi: medicalNftABI,
         functionName: "getVerificationHistory",
         args: [BigInt(id)],
       })) as any[];
-
-      // Reverse agar histori terbaru muncul di atas
       setHistoryList([...history].reverse());
+
+      // 👇 B. MEMBACA EVENT REVOKE DARI BLOCKCHAIN
+      // Catatan: Pastikan nama event di Solidity Anda adalah 'DocumentRevoked'
+      const revokeLogs = await publicClient.getContractEvents({
+        address: MEDICAL_NFT_ADDRESS as `0x${string}`,
+        abi: medicalNftABI,
+        eventName: "DocumentRevoked",
+        args: { tokenId: BigInt(id) }, // Mencari event khusus untuk tokenId ini
+        fromBlock: 0n,
+        toBlock: "latest",
+      });
+
+      // Jika ada log event pembatalan yang ditemukan di Blockchain
+      if (revokeLogs && revokeLogs.length > 0) {
+        const latestRevokeEvent = revokeLogs[revokeLogs.length - 1];
+
+        // Ambil data blok untuk mengetahui waktu (Timestamp) pasti terjadinya revoke
+        const block = await publicClient.getBlock({
+          blockHash: latestRevokeEvent.blockHash,
+        });
+
+        setStatus("revoked"); // Override status menjadi revoked (Blockchain source of truth)
+        setRevokeDetails({
+          txHash: latestRevokeEvent.transactionHash,
+          timestamp: Number(block.timestamp),
+        });
+      }
     } catch (error) {
-      console.error("Gagal mengambil histori dari Smart Contract", error);
+      console.error("Gagal mengambil data on-chain:", error);
     }
   };
 
   useEffect(() => {
-    if (tokenId !== null) fetchHistoryFromSC(tokenId);
+    if (tokenId !== null) fetchOnChainData(tokenId);
   }, [tokenId]);
 
   // =========================================================
   // 3. Tulis Jejak HRD ke Smart Contract (VIEM WRITE)
   // =========================================================
   const handleRecordVerification = async () => {
-    if (!window.ethereum) {
-      return alert(
-        "Ekstensi Dompet Web3 (seperti MetaMask/Rabby) tidak terdeteksi di browser ini.",
-      );
-    }
-
+    if (!window.ethereum)
+      return alert("Ekstensi Dompet Web3 tidak terdeteksi di browser ini.");
     if (!address) {
       alert(
         "Silakan hubungkan Dompet Web3 Anda terlebih dahulu untuk merekam jejak.",
@@ -183,7 +186,6 @@ export default function VerifyResultPage() {
       connectWallet();
       return;
     }
-
     if (tokenId === null) return;
 
     setIsWriting(true);
@@ -192,7 +194,6 @@ export default function VerifyResultPage() {
         chain: hardhat,
         transport: custom(window.ethereum),
       });
-
       const walletClient = createWalletClient({
         chain: hardhat,
         transport: custom(window.ethereum),
@@ -206,15 +207,12 @@ export default function VerifyResultPage() {
         account: address as `0x${string}`,
       });
 
-      // Tunggu transaksi selesai dicatat di Blockchain
       await publicClient.waitForTransactionReceipt({ hash: txHash });
-
       alert(
         "✅ Jejak verifikasi Anda berhasil dicatat secara permanen di Blockchain!",
       );
-      fetchHistoryFromSC(tokenId); // Segarkan ulang tabel history
+      fetchOnChainData(tokenId);
     } catch (error: any) {
-      console.error("Gagal mencatat verifikasi:", error);
       if (error.code === 4001 || error.message?.includes("User rejected")) {
         alert("Transaksi dibatalkan oleh Anda.");
       } else {
@@ -244,7 +242,6 @@ export default function VerifyResultPage() {
           </p>
         </div>
 
-        {/* STATE: LOADING */}
         {status === "loading" && (
           <div className="flex flex-col justify-center items-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
             <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
@@ -254,7 +251,6 @@ export default function VerifyResultPage() {
           </div>
         )}
 
-        {/* STATE: NOT FOUND */}
         {status === "not_found" && (
           <div className="bg-white border-2 border-gray-200 rounded-3xl p-10 text-center shadow-sm mb-8">
             <ShieldAlert className="text-gray-400 w-20 h-20 mx-auto mb-4" />
@@ -267,7 +263,6 @@ export default function VerifyResultPage() {
           </div>
         )}
 
-        {/* STATE: MANIPULATED */}
         {status === "tampered" && (
           <div className="bg-red-50 border-2 border-red-500 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 shadow-sm mb-8 animate-in zoom-in-95">
             <ShieldAlert className="text-red-500 w-20 h-20 flex-shrink-0" />
@@ -284,10 +279,8 @@ export default function VerifyResultPage() {
           </div>
         )}
 
-        {/* STATE: VALID OR REVOKED */}
         {(status === "valid" || status === "revoked") && data && (
           <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
-            {/* Card Status Utama */}
             {status === "valid" ? (
               <div className="bg-emerald-50 border-2 border-emerald-500/30 rounded-3xl p-8 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-sm">
                 <ShieldCheck className="text-emerald-500 w-16 h-16 flex-shrink-0" />
@@ -300,36 +293,26 @@ export default function VerifyResultPage() {
                     kriptografis terbukti belum direkayasa.
                   </p>
 
-                  {/* Rincian Singkat */}
                   <div className="bg-white/60 rounded-xl p-4 grid grid-cols-2 gap-4 text-sm border border-emerald-100">
-                    {/* Kolom Pasien */}
                     <div>
                       <p className="text-emerald-600/70 font-bold uppercase text-[10px] tracking-wider mb-1">
                         Pasien
                       </p>
-                      {/* 👇 Tampilkan State Nama Pasien dari API */}
                       <p className="font-bold text-emerald-900 text-base">
                         {patientName}
                       </p>
-
-                      {/* Wallet Pasien */}
                       <p className="text-[10px] text-emerald-700/60 font-mono mt-0.5 bg-emerald-100/50 w-fit px-1.5 py-0.5 rounded">
                         {data.patientWallet.substring(0, 6)}...
                         {data.patientWallet.substring(38)}
                       </p>
                     </div>
-
-                    {/* Kolom Dokter */}
                     <div>
                       <p className="text-emerald-600/70 font-bold uppercase text-[10px] tracking-wider mb-1">
                         Dokter Penerbit
                       </p>
-                      {/* 👇 Tampilkan State Nama Dokter dari API */}
                       <p className="font-bold text-emerald-900 text-base">
                         {doctorName}
                       </p>
-
-                      {/* Wallet Dokter */}
                       <p className="text-[10px] text-emerald-700/60 font-mono mt-0.5 bg-emerald-100/50 w-fit px-1.5 py-0.5 rounded">
                         {data.issuerWallet.substring(0, 6)}...
                         {data.issuerWallet.substring(38)}
@@ -346,21 +329,53 @@ export default function VerifyResultPage() {
                     Dibatalkan (Revoked)
                   </h2>
                   <p className="text-amber-700/80 mb-4">
-                    Dokumen ini ditarik kembali atau dibatalkan oleh dokter yang
-                    menerbitkannya.
+                    Dokumen ini telah ditarik kembali secara resmi oleh dokter
+                    yang menerbitkannya.
                   </p>
+
+                  {/* 👇 MENAMPILKAN BUKTI EVENT REVOKE DARI BLOCKCHAIN */}
+                  {revokeDetails && (
+                    <div className="bg-white/60 rounded-xl p-4 text-sm border border-amber-200">
+                      <p className="text-amber-700 font-bold uppercase text-[10px] tracking-wider mb-2 flex items-center gap-1">
+                        <History size={12} /> Bukti Pembatalan Blockchain
+                      </p>
+                      <div className="space-y-1.5">
+                        <p className="text-amber-900">
+                          <span className="text-amber-700/70 inline-block w-20">
+                            Waktu:
+                          </span>
+                          <span className="font-semibold">
+                            {new Date(
+                              revokeDetails.timestamp * 1000,
+                            ).toLocaleString("id-ID", {
+                              dateStyle: "long",
+                              timeStyle: "short",
+                            })}{" "}
+                            WIB
+                          </span>
+                        </p>
+                        <p className="text-amber-900 flex items-center gap-1">
+                          <span className="text-amber-700/70 inline-block w-20">
+                            Tx Hash:
+                          </span>
+                          <span className="font-mono text-xs bg-amber-100/50 px-1.5 py-0.5 rounded text-amber-800">
+                            {revokeDetails.txHash.substring(0, 10)}...
+                            {revokeDetails.txHash.substring(58)}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* TABEL AUDIT TRAIL */}
+            {/* TABEL AUDIT TRAIL TETAP SAMA SEPERTI SEBELUMNYA */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 pb-6 border-b border-gray-100">
                 <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                   <History className="text-blue-600" /> Jejak Audit Publik
                 </h3>
-
-                {/* Tombol HRD Merekam Jejak */}
                 <button
                   onClick={handleRecordVerification}
                   disabled={isWriting}
@@ -415,7 +430,6 @@ export default function VerifyResultPage() {
                     </div>
                   );
                 })}
-
                 {historyList.length === 0 && (
                   <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
                     <Fingerprint className="w-10 h-10 text-gray-300 mx-auto mb-3" />

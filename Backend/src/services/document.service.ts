@@ -13,13 +13,14 @@ export class DocumentService {
     documentDescription: string,
     restDays: number,
   ): Promise<any> {
+    console.log("📋 Membuat draft PDF dengan data:", restDays)
     const fileName = `DRAFT_${Date.now()}.pdf`;
     const dirPath = path.join(__dirname, "../../file_letters");
     if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
     const filePath = path.join(dirPath, fileName);
 
     return new Promise((resolve, reject) => {
-      // ... kode konfigurasi path dan file sebelumnya tetap ...
+    
 
       // 1. Inisialisasi PDF dengan Margin dan Ukuran Kertas A4
       const doc = new PDFDocument({
@@ -177,6 +178,7 @@ export class DocumentService {
 
   // Poin 4: Finalize Document
   static async saveDocument(data: any, issuerWallet: string) {
+    console.log("📥 Menerima data untuk finalisasi dokumen:", data);
     // Logika Kalkulasi expiredAt
     let expiredAtDate = null;
     if (data.restDays && parseInt(data.restDays) > 0) {

@@ -11,6 +11,7 @@ import {
   getDashboardStats,
   getDoctorDocuments,
   getPatientDocuments,
+  revokeDocument,
   verifyDocument,
 } from "./document";
 // Export interface jika dibutuhkan komponen lain
@@ -31,5 +32,6 @@ export const apiService = {
   createDraft,
   finalizeDocument,
   getAllPatients,
-  verifyDocument
+  verifyDocument,
+  revokeDocument
 };
