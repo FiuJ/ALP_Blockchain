@@ -1,62 +1,87 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { createPublicClient, createWalletClient, custom, http } from 'viem';
-import { hardhat } from 'viem/chains'; // Ganti dengan 'sepolia' / 'mainnet' jika sudah live
-import { ShieldCheck, ShieldAlert, History, FileWarning, Fingerprint, Loader2 } from 'lucide-react';
+import { hardhat } from 'viem/chains';
+import { 
+  ShieldCheck, 
+  ShieldAlert, 
+  History, 
+  FileWarning, 
+  Fingerprint, 
+  Loader2,
+  ArrowLeft
+} from 'lucide-react';
 
-// Import Custom Hook dan Konfigurasi Kontrak dari repo Anda
+// Gunakan apiService yang sudah kita buat sebelumnya (jangan gunakan axios manual)
+import { apiService } from '../services'; 
 import { useWallet } from '../hooks/useWallet';
 import { MEDICAL_NFT_ADDRESS, medicalNftABI } from '../config/MedicalDocumentContractConfig';
 
 export default function VerifyResultPage() {
-  const { documentHash } = useParams();
-  const { address } = useWallet(); // Menggunakan custom hook useWallet Anda
+  const params = useParams();
+  const { documentHash } = useParams(); // Sesuaikan dengan nama parameter di Route Anda
+  const { address, connectWallet } = useWallet();
   
   const [data, setData] = useState<any>(null);
-  const [tokenId, setTokenId] = useState<number | null>(null);
+  const [tokenId, setTokenId] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'valid' | 'revoked' | 'tampered' | 'not_found'>('loading');
   
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [isWriting, setIsWriting] = useState(false);
 
   // =========================================================
-  // 1. Verifikasi Hash File PDF ke Backend (Tugas Utama Backend)
+  // 1. Verifikasi Hash File PDF ke Backend
   // =========================================================
   useEffect(() => {
+    console.log("=== DEBUGGING HALAMAN VERIFIKASI ===");
+    console.log("1. Seluruh Parameter URL (useParams):", params);
+    console.log("2. Nilai documentHash yang diekstrak:", documentHash);
     const verifyDoc = async () => {
+      if (!documentHash) {
+        console.warn("🛑 PROSES BERHENTI: 'documentHash' kosong atau undefined. Cek pengaturan nama parameter di Route Anda (misal di App.tsx)!");
+        return;
+      }
+      
       try {
-        // Backend hanya bertugas memvalidasi Hash PDF dan mengembalikan TokenId
-        const res = await axios.get(`http://localhost:3000/api/documents/verify/${documentHash}`);
-        setData(res.data);
-        setStatus(res.data.isValid ? 'valid' : 'revoked');
+        // Gunakan apiService yang strukturnya sudah rapi
+        const res = await apiService.verifyDocument(documentHash);
+        console.log("✅ SUKSES: Respons dari Backend:", res);
+        setData(res.document);
         
-        // Simpan tokenId untuk menarik history dari Blockchain
-        setTokenId(res.data.tokenId);
+        // Pengecekan status yang benar berdasarkan respons Backend Anda ("AUTHENTIC")
+        setStatus(res.status === "AUTHENTIC" ? 'valid' : 'revoked');
+        
+        // Simpan tokenId dari dalam objek document
+        setTokenId(res.document.tokenId);
+
       } catch (error: any) {
-        if (error.response?.data?.message === 'DOKUMEN TELAH DIMANIPULASI') {
+        console.error("❌ ERROR: Gagal memanggil API:", error);
+        // Menangkap error dari apiService
+        const errorMessage = error.message || "";
+        if (errorMessage.includes('MANIPULASI')) {
           setStatus('tampered');
+        } else if (errorMessage.includes('DIBATALKAN') || errorMessage.includes('REVOKED')) {
+          setStatus('revoked');
         } else {
           setStatus('not_found');
         }
       }
     };
-    if (documentHash) verifyDoc();
+    
+    verifyDoc();
   }, [documentHash]);
 
   // =========================================================
   // 2. Ambil History LANGSUNG dari Smart Contract (VIEM READ)
   // =========================================================
-  const fetchHistoryFromSC = async (id: number) => {
+  const fetchHistoryFromSC = async (id: string) => {
     try {
-      // Buat Public Client viem (Untuk operasi Read-Only)
       const publicClient = createPublicClient({
-        chain: hardhat, // Sesuaikan dengan network Anda
-        // Fallback: Jika ada window.ethereum pakai itu, jika tidak pakai RPC lokal
+        chain: hardhat, 
+        // Fallback: Jika publik (HRD) tidak punya MetaMask, gunakan RPC Lokal
         transport: window.ethereum ? custom(window.ethereum) : http("http://127.0.0.1:8545")
       });
       
-      // Tembak fungsi 'getVerificationHistory' di SC menggunakan viem
       const history = await publicClient.readContract({
         address: MEDICAL_NFT_ADDRESS as `0x${string}`,
         abi: medicalNftABI,
@@ -64,13 +89,13 @@ export default function VerifyResultPage() {
         args: [BigInt(id)],
       }) as any[];
 
-      setHistoryList(history);
+      // Reverse agar histori terbaru muncul di atas
+      setHistoryList([...history].reverse());
     } catch (error) {
       console.error("Gagal mengambil histori dari Smart Contract", error);
     }
   };
 
-  // Pantau kapan `tokenId` berhasil didapat dari backend, lalu jalankan tembakan ke SC
   useEffect(() => {
     if (tokenId !== null) fetchHistoryFromSC(tokenId);
   }, [tokenId]);
@@ -79,143 +104,193 @@ export default function VerifyResultPage() {
   // 3. Tulis Jejak HRD ke Smart Contract (VIEM WRITE)
   // =========================================================
   const handleRecordVerification = async () => {
-    if (!address) return alert("Silakan klik 'Connect Wallet' di kanan atas terlebih dahulu untuk merekam jejak.");
-    if (tokenId === null || !window.ethereum) return;
+    if (!window.ethereum) {
+      return alert("Ekstensi Dompet Web3 (seperti MetaMask/Rabby) tidak terdeteksi di browser ini.");
+    }
+    
+    if (!address) {
+      alert("Silakan hubungkan Dompet Web3 Anda terlebih dahulu untuk merekam jejak.");
+      connectWallet();
+      return;
+    }
+
+    if (tokenId === null) return;
 
     setIsWriting(true);
     try {
-      // Buat Public Client untuk menunggu struk transaksi (receipt)
       const publicClient = createPublicClient({
         chain: hardhat,
         transport: custom(window.ethereum)
       });
 
-      // Buat Wallet Client untuk menandatangani transaksi (Write)
       const walletClient = createWalletClient({
         chain: hardhat,
         transport: custom(window.ethereum)
       });
       
-      // Eksekusi fungsi penambahan record pada Smart Contract
       const txHash = await walletClient.writeContract({
         address: MEDICAL_NFT_ADDRESS as `0x${string}`,
         abi: medicalNftABI,
         functionName: 'verifyDocumentByNFT',
         args: [BigInt(tokenId)],
-        account: address as `0x${string}` // Alamat HRD yang sedang Connect Wallet
+        account: address as `0x${string}`
       });
 
-      // Tunggu blok dikonfirmasi oleh jaringan
+      // Tunggu transaksi selesai dicatat di Blockchain
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       
-      alert("Jejak verifikasi Anda berhasil dicatat secara permanen di Blockchain!");
+      alert("✅ Jejak verifikasi Anda berhasil dicatat secara permanen di Blockchain!");
       fetchHistoryFromSC(tokenId); // Segarkan ulang tabel history
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gagal mencatat verifikasi:", error);
-      alert("Transaksi dibatalkan atau gagal.");
+      if (error.code === 4001 || error.message?.includes('User rejected')) {
+        alert("Transaksi dibatalkan oleh Anda.");
+      } else {
+        alert("Gagal merekam jejak ke Blockchain.");
+      }
     } finally {
       setIsWriting(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Hasil Verifikasi</h1>
-        <p className="text-gray-500">Pemeriksaan integritas dokumen via Blockchain Ethereum</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 py-10 px-4 font-sans">
+      <div className="max-w-4xl mx-auto">
+        
+        <Link to="/verify" className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-600 mb-8 font-medium transition-colors">
+          <ArrowLeft size={18} /> Kembali ke Pencarian
+        </Link>
 
-      {status === 'loading' && (
-        <div className="flex justify-center items-center py-20">
-          <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+        <div className="text-center mb-10">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">Hasil Verifikasi Dokumen</h1>
+          <p className="text-gray-500">Pemeriksaan integritas dokumen via Blockchain Ethereum</p>
         </div>
-      )}
 
-      {/* DETEKSI MANIPULASI MERAH */}
-      {status === 'tampered' && (
-        <div className="bg-red-50 border-2 border-red-500 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 shadow-sm mb-8">
-          <ShieldAlert className="text-red-500 w-20 h-20 flex-shrink-0" />
-          <div>
-            <h2 className="text-2xl font-black text-red-700">DOKUMEN DIMANIPULASI</h2>
-            <p className="text-red-600 mt-2">
-              <strong>Peringatan Sistem:</strong> Hash dari file PDF ini tidak cocok dengan catatan *immutable* di blockchain. Isi dokumen telah diubah atau dipalsukan secara ilegal.
-            </p>
+        {/* STATE: LOADING */}
+        {status === 'loading' && (
+          <div className="flex flex-col justify-center items-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
+            <Loader2 className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+            <p className="text-gray-500 font-medium">Melakukan validasi kriptografi...</p>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* STATUS ASLI ATAU DIBATALKAN */}
-      {(status === 'valid' || status === 'revoked') && data && (
-        <div className="space-y-8">
-          
-          {/* Card Status */}
-          {status === 'valid' ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-8 flex items-center gap-6 shadow-sm">
-              <ShieldCheck className="text-emerald-500 w-16 h-16" />
-              <div>
-                <h2 className="text-2xl font-black text-emerald-700">ASLI & VALID</h2>
-                <p className="text-emerald-600">Dokumen ini diterbitkan oleh dokter resmi dan secara kriptografis terbukti belum direkayasa.</p>
-              </div>
+        {/* STATE: NOT FOUND */}
+        {status === 'not_found' && (
+          <div className="bg-white border-2 border-gray-200 rounded-3xl p-10 text-center shadow-sm mb-8">
+            <ShieldAlert className="text-gray-400 w-20 h-20 mx-auto mb-4" />
+            <h2 className="text-2xl font-black text-gray-700">DOKUMEN TIDAK DITEMUKAN</h2>
+            <p className="text-gray-500 mt-2">Hash dokumen ini tidak terdaftar di dalam sistem kami.</p>
+          </div>
+        )}
+
+        {/* STATE: MANIPULATED */}
+        {status === 'tampered' && (
+          <div className="bg-red-50 border-2 border-red-500 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-6 shadow-sm mb-8 animate-in zoom-in-95">
+            <ShieldAlert className="text-red-500 w-20 h-20 flex-shrink-0" />
+            <div>
+              <h2 className="text-2xl font-black text-red-700 uppercase tracking-wide">Peringatan: Dokumen Dimanipulasi</h2>
+              <p className="text-red-600/90 mt-2 leading-relaxed">
+                Hash dari file PDF ini tidak cocok dengan catatan *immutable* di blockchain. Isi dokumen kemungkinan besar telah diubah, diedit, atau dipalsukan secara ilegal.
+              </p>
             </div>
-          ) : (
-             <div className="bg-amber-50 border border-amber-200 rounded-3xl p-8 flex items-center gap-6 shadow-sm">
-              <FileWarning className="text-amber-500 w-16 h-16" />
-              <div>
-                <h2 className="text-2xl font-black text-amber-700">DIBATALKAN OLEH DOKTER</h2>
-                <p className="text-amber-600">Dokumen ini ditarik kembali (revoked) oleh dokter yang menerbitkannya.</p>
-              </div>
-            </div>
-          )}
+          </div>
+        )}
 
-          {/* TABEL AUDIT TRAIL (LANGSUNG DARI SMART CONTRACT MENGGUNAKAN VIEM) */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 mt-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <History className="text-blue-600" /> Jejak Audit Verifikasi
-              </h3>
-              
-              {/* Tombol HRD */}
-              <button 
-                onClick={handleRecordVerification}
-                disabled={isWriting}
-                className="bg-gray-900 hover:bg-black text-white px-5 py-2.5 rounded-full text-sm font-semibold transition flex items-center gap-2 shadow-md disabled:bg-gray-400"
-              >
-                <Fingerprint size={16} /> 
-                {isWriting ? 'Merekam Tx...' : 'Catat Verifikasi Saya'}
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {historyList.map((record, i) => {
-                // Viem biasanya mengembalikan struct sebagai object dengan key (jika didefinisikan di ABI)
-                // Atau sebagai Array jika key tidak bernama. Kita buat fallback untuk keduanya:
-                const verifierAddress = record.verifier || record[0];
-                const timestamp = Number(record.timestamp || record[1]); // Ubah dari BigInt ke Number
-                const date = new Date(timestamp * 1000).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' });
-
-                return (
-                  <div key={i} className="flex justify-between items-center pb-4 border-b border-gray-100 last:border-0 p-2">
+        {/* STATE: VALID OR REVOKED */}
+        {(status === 'valid' || status === 'revoked') && data && (
+          <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
+            
+            {/* Card Status Utama */}
+            {status === 'valid' ? (
+              <div className="bg-emerald-50 border-2 border-emerald-500/30 rounded-3xl p-8 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-sm">
+                <ShieldCheck className="text-emerald-500 w-16 h-16 flex-shrink-0" />
+                <div className="text-center md:text-left w-full">
+                  <h2 className="text-2xl font-black text-emerald-700 uppercase tracking-wide mb-1">Dokumen Asli & Valid</h2>
+                  <p className="text-emerald-700/80 mb-4">Dokumen ini diterbitkan oleh tenaga medis resmi dan secara kriptografis terbukti belum direkayasa.</p>
+                  
+                  {/* Rincian Singkat */}
+                  <div className="bg-white/60 rounded-xl p-4 grid grid-cols-2 gap-4 text-sm border border-emerald-100">
                     <div>
-                      <span className="bg-blue-50 text-blue-700 font-mono text-xs px-3 py-1 rounded-full border border-blue-100">
-                        {verifierAddress}
-                      </span>
-                      <p className="text-sm text-gray-500 mt-2 font-medium">Memeriksa keaslian dokumen</p>
+                      <p className="text-emerald-600/70 font-bold uppercase text-[10px] tracking-wider">Pasien</p>
+                      <p className="font-bold text-emerald-900">{(data.patientWallet).substring(0, 15)}</p>
                     </div>
-                    <div className="text-sm font-bold text-gray-700">{date}</div>
+                    <div>
+                      <p className="text-emerald-600/70 font-bold uppercase text-[10px] tracking-wider">Dokter Penerbit</p>
+                      <p className="font-bold text-emerald-900">{(data.issuerWallet).substring(0, 15)}</p>
+                    </div>
                   </div>
-                );
-              })}
-
-              {historyList.length === 0 && (
-                <div className="text-center py-6 text-gray-400 font-medium">
-                  Belum ada institusi/pihak yang merekam verifikasi dokumen ini di blockchain.
                 </div>
-              )}
+              </div>
+            ) : (
+               <div className="bg-amber-50 border-2 border-amber-500/30 rounded-3xl p-8 flex flex-col md:flex-row items-center md:items-start gap-6 shadow-sm">
+                <FileWarning className="text-amber-500 w-16 h-16 flex-shrink-0" />
+                <div className="text-center md:text-left w-full">
+                  <h2 className="text-2xl font-black text-amber-700 uppercase tracking-wide mb-1">Dibatalkan (Revoked)</h2>
+                  <p className="text-amber-700/80 mb-4">Dokumen ini ditarik kembali atau dibatalkan oleh dokter yang menerbitkannya.</p>
+                </div>
+              </div>
+            )}
+
+            {/* TABEL AUDIT TRAIL */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 pb-6 border-b border-gray-100">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <History className="text-blue-600" /> Jejak Audit Publik
+                </h3>
+                
+                {/* Tombol HRD Merekam Jejak */}
+                <button 
+                  onClick={handleRecordVerification}
+                  disabled={isWriting}
+                  className="bg-gray-900 hover:bg-black text-white px-5 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 shadow-md hover:shadow-lg disabled:bg-gray-400 disabled:shadow-none active:scale-95"
+                >
+                  {isWriting ? (
+                    <><Loader2 size={16} className="animate-spin" /> Merekam ke Blockchain...</>
+                  ) : (
+                    <><Fingerprint size={16} /> Catat Verifikasi Saya</>
+                  )}
+                </button>
+              </div>
+
+              <div className="space-y-1">
+                {historyList.map((record, i) => {
+                  const verifierAddress = record.verifier || record[0];
+                  const timestamp = Number(record.timestamp || record[1]); 
+                  const dateObj = new Date(timestamp * 1000);
+
+                  return (
+                    <div key={i} className="flex flex-col md:flex-row md:justify-between md:items-center py-4 border-b border-gray-50 last:border-0 gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="bg-blue-50 text-blue-700 font-mono text-xs px-3 py-1 rounded-full border border-blue-100">
+                            {verifierAddress.substring(0, 6)}...{verifierAddress.substring(38)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500 font-medium">Telah memverifikasi keaslian dokumen ini.</p>
+                      </div>
+                      <div className="text-sm font-bold text-gray-700 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 text-center">
+                        {dateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} <br className="hidden md:block" />
+                        <span className="text-xs text-gray-400 font-normal">{dateObj.toLocaleTimeString('id-ID')} WIB</span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {historyList.length === 0 && (
+                  <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                    <Fingerprint className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium text-sm">
+                      Belum ada institusi/pihak yang merekam jejak verifikasi dokumen ini.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
+
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

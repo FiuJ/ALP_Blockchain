@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '../hooks/useWallet';
-// import { apiService } from '../services/api';
 import PatientLayout from '../layouts/PatientLayout';
 import { 
   ShieldCheck, 
@@ -12,12 +11,20 @@ import {
   Wallet,
   ShieldAlert,
   Loader2,
-  XCircle
+  XCircle,
+  Eye, // 👈 Tambahkan icon Eye
+  X    // 👈 Tambahkan icon X untuk tombol close
 } from 'lucide-react';
 import { apiService } from '../services';
 
+// Tentukan BASE_URL backend Anda untuk iframe PDF
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL?.replace('/api', '') || 'http://localhost:5000';
+
 export default function PatientDashboard() {
   const { address, connectWallet } = useWallet();
+
+  // STATE UNTUK MODAL PREVIEW PDF
+  const [previewDoc, setPreviewDoc] = useState<any | null>(null);
 
   // Fetching riwayat dokumen pasien
   const { data: documents = [], isLoading, isError, error } = useQuery({
@@ -104,9 +111,9 @@ export default function PatientDashboard() {
             {documents.map((doc: any, idx: number) => (
               <div key={idx} className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden flex flex-col">
                 
-                {/* Badge Status */}
+                {/* Badge Status (Diperbaiki menggunakan isRevoked) */}
                 <div className="absolute top-6 right-6 z-10">
-                  {doc.isValid ? (
+                  {!doc.isRevoked ? (
                     <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 block shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
                       <span className="text-[10px] font-bold uppercase tracking-wider">Aktif</span>
@@ -123,27 +130,36 @@ export default function PatientDashboard() {
                   <FileText size={24} />
                 </div>
 
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Surat Keterangan Sakit</h3>
+                {/* Diperbaiki menggunakan documentType */}
+                <h3 className="text-lg font-bold text-gray-900 mb-1">{doc.documentType || 'Surat Medis'}</h3>
+                
                 <p className="text-sm text-gray-500 mb-4 flex flex-col gap-1.5 flex-grow">
-                  <span>Diterbitkan oleh:<br/><strong className="text-gray-800">{doc.doctorName || 'Dokter Terdaftar'}</strong></span>
+                  <span>Diterbitkan oleh:<br/>
+                    {/* Diperbaiki menggunakan issuer.name */}
+                    <strong className="text-gray-800">{doc.issuer?.name || 'Dokter Terdaftar'}</strong>
+                  </span>
                   <span className="text-xs bg-gray-100 w-fit px-2 py-0.5 rounded text-gray-600 mt-1">
-                    {new Date(doc.createdAt || doc.date).toLocaleDateString('id-ID', { 
+                    {/* Diperbaiki menggunakan issuedAt */}
+                    {new Date(doc.issuedAt).toLocaleDateString('id-ID', { 
                       day: 'numeric', month: 'long', year: 'numeric' 
                     })}
                   </span>
                 </p>
 
                 <div className="pt-4 border-t border-gray-100 flex items-center gap-3 mt-auto">
-                  <Link 
-                    to={`/patient/document/${doc.tokenId}`}
-                    className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 hover:text-blue-600 text-gray-700 text-center py-2.5 rounded-full text-sm font-semibold transition-colors"
+                  
+                  {/* 👇 TOMBOL INI DIUBAH MENJADI PEMICU MODAL PREVIEW */}
+                  <button 
+                    onClick={() => setPreviewDoc(doc)}
+                    className="flex-1 bg-white border-2 border-gray-200 hover:border-blue-500 hover:text-blue-600 text-gray-700 flex items-center justify-center gap-2 py-2.5 rounded-full text-sm font-semibold transition-colors"
                   >
-                    Lihat PDF
-                  </Link>
+                    <Eye size={16} /> Lihat PDF
+                  </button>
+
                   <Link 
                     to={`/patient/document/${doc.tokenId}`}
                     className="flex-none bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-md transition-transform hover:scale-105"
-                    title="Generate QR Code untuk HRD"
+                    title="Buka Detail & QR Code"
                   >
                     <QrCode size={18} />
                   </Link>
@@ -153,6 +169,60 @@ export default function PatientDashboard() {
           </div>
         )}
       </div>
+
+      {/* ========================================== */}
+      {/* MODAL PREVIEW PDF */}
+      {/* ========================================== */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            
+            {/* Header Modal */}
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/80">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                  <FileText size={20} className="text-blue-600"/> 
+                  Preview Dokumen Medis
+                </h3>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">Token ID: #{previewDoc.tokenId}</p>
+              </div>
+              <button 
+                onClick={() => setPreviewDoc(null)} 
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Konten PDF Iframe */}
+            <div className="flex-grow bg-gray-200/50 p-2 md:p-6">
+              <iframe 
+                src={`${BACKEND_URL}/files/${previewDoc.filePath}`} 
+                className="w-full h-full rounded-xl border border-gray-300 shadow-sm bg-white"
+                title="PDF Preview"
+              />
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-5 border-t border-gray-100 bg-white flex justify-end gap-3">
+              <button 
+                onClick={() => setPreviewDoc(null)} 
+                className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+              >
+                Tutup
+              </button>
+              <Link 
+                to={`/patient/document/${previewDoc.tokenId}`} 
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                Detail Lengkap & QR <QrCode size={16} />
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </PatientLayout>
   );
 }

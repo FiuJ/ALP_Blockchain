@@ -40,7 +40,7 @@ function App() {
       <Route path="/patient/dashboard" element={<PatientDashboard />} />
 
       {/* E. Portal Verifikator (HRD/Publik) */}
-      <Route path="/verify" element={<MainLayout><UploadPage /></MainLayout>} />
+      <Route path="/upload" element={<MainLayout><UploadPage /></MainLayout>} />
       <Route path="/verify/result/:documentHash" element={<MainLayout><VerifyResultPage /></MainLayout>} />
     </Routes>
   );

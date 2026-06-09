@@ -31,4 +31,19 @@ export class PatientService {
       where: { walletAddress },
     });
   }
+
+  static async getPatientHistory(walletAddress: string) {
+    const patient = await prisma.patient.findUnique({
+      where: { walletAddress },
+    });
+
+    if (!patient) {
+      throw new Error("Pasien tidak ditemukan");
+    }
+
+    return await prisma.medicalDocument.findMany({
+      where: { patientWallet: walletAddress },
+      include: { patient: true },
+    });
+  }
 }

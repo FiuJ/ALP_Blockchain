@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { IDoctorRegister } from '../interfaces/doctor.interface';
+import { PrismaClient } from "@prisma/client";
+import { IDoctorRegister } from "../interfaces/doctor.interface";
 
 const prisma = new PrismaClient();
 
@@ -12,7 +12,7 @@ export class DoctorService {
     });
 
     if (existingDoctor) {
-      throw new Error('Wallet address dokter ini sudah terdaftar di database.');
+      throw new Error("Wallet address dokter ini sudah terdaftar di database.");
     }
 
     // Simpan ke database dengan default isVerified = false
@@ -24,7 +24,7 @@ export class DoctorService {
         specialization: data.specialization,
         clinicName: data.clinicName,
         clinicLocation: data.clinicLocation,
-        isVerified: false, 
+        isVerified: false,
       },
     });
 
@@ -50,7 +50,7 @@ export class DoctorService {
     });
 
     if (!doctor) {
-      throw new Error('Dokter tidak ditemukan');
+      throw new Error("Dokter tidak ditemukan");
     }
 
     return await prisma.doctor.update({
@@ -59,5 +59,18 @@ export class DoctorService {
     });
   }
 
-  
+  static async getDoctorHistory(walletAddress: string) {
+    const doctor = await prisma.doctor.findUnique({
+      where: { walletAddress },
+    });
+
+    if (!doctor) {
+      throw new Error("Dokter tidak ditemukan");
+    }
+
+    return await prisma.medicalDocument.findMany({
+      where: { issuerWallet: walletAddress },
+      include: { patient: true },
+    });
+  }
 }

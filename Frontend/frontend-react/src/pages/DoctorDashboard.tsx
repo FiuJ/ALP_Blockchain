@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet } from "../hooks/useWallet";
@@ -17,12 +17,16 @@ import {
   Building2,
   BadgeCheck,
   LogOut,
+  Eye, // 👈 Import ikon Eye (Mata)
+  X, // 👈 Import ikon X (Close)
 } from "lucide-react";
 import { apiService } from "../services";
-
+const BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL?.replace("/api", "") ||
+  "http://localhost:5000";
 export default function DoctorDashboard() {
   const { address, connectWallet, disconnectWallet } = useWallet();
-
+  const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   // 1. Fetching Profil Dokter
   const {
     data: profile,
@@ -49,6 +53,7 @@ export default function DoctorDashboard() {
   const totalIssued = documents.length;
   const activeDocs = documents.filter((doc: any) => doc.isValid).length;
   const revokedDocs = totalIssued - activeDocs;
+  console.log(documents);
 
   // ==========================================
   // STATE 1: WALLET BELUM TERKONEKSI
@@ -275,7 +280,7 @@ export default function DoctorDashboard() {
                         #{doc.tokenId}
                       </td>
                       <td className="px-8 py-5 text-sm text-gray-600">
-                        {new Date(doc.createdAt).toLocaleDateString("id-ID", {
+                        {new Date(doc.issuedAt).toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",
@@ -283,28 +288,30 @@ export default function DoctorDashboard() {
                       </td>
                       <td className="px-8 py-5">
                         <span className="font-mono text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
-                          {doc.patientAddress.substring(0, 6)}...
-                          {doc.patientAddress.substring(38)}
+                          {/* substring */}
+
+                          {doc.patientWallet}
                         </span>
                       </td>
                       <td className="px-8 py-5">
-                        {doc.isValid ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
-                            <CheckCircle size={14} /> Aktif
-                          </span>
-                        ) : (
+                        {doc.isRevoked ? (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
                             <XCircle size={14} /> Dibatalkan
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                            <CheckCircle size={14} /> Aktif
                           </span>
                         )}
                       </td>
                       <td className="px-8 py-5 text-right">
-                        <Link
-                          to={`/doctor/document/${doc.tokenId}`}
-                          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-bold transition-colors bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-transparent hover:border-blue-100"
+                        {/* 👇 UBAH TOMBOL INI UNTUK MEMBUKA MODAL PREVIEW */}
+                        <button
+                          onClick={() => setPreviewDoc(doc)}
+                          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 text-sm font-bold transition-colors bg-white hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-transparent hover:border-blue-100 mr-2"
                         >
-                          Detail <ExternalLink size={16} />
-                        </Link>
+                          <Eye size={16} /> Preview
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -314,6 +321,56 @@ export default function DoctorDashboard() {
           </div>
         </div>
       </div>
+
+      {previewDoc && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            
+            {/* Header Modal */}
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/80">
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                  <FileText size={20} className="text-blue-600"/> 
+                  Preview Dokumen Medis
+                </h3>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">Token ID: #{previewDoc.tokenId}</p>
+              </div>
+              <button 
+                onClick={() => setPreviewDoc(null)} 
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Konten PDF Iframe */}
+            <div className="flex-grow bg-gray-200/50 p-2 md:p-6">
+              <iframe 
+                src={`${BACKEND_URL}/files/${previewDoc.filePath}`} 
+                className="w-full h-full rounded-xl border border-gray-300 shadow-sm bg-white"
+                title="PDF Preview"
+              />
+            </div>
+
+            {/* Footer Modal (Aksi Lanjutan) */}
+            <div className="p-5 border-t border-gray-100 bg-white flex justify-end gap-3">
+              <button 
+                onClick={() => setPreviewDoc(null)} 
+                className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
+              >
+                Tutup Preview
+              </button>
+              <Link 
+                to={`/doctor/document/${previewDoc.tokenId}`} 
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                Ke Halaman Detail <ExternalLink size={16} />
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      )}
     </DoctorLayout>
   );
 }

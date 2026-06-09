@@ -182,17 +182,15 @@ export class DocumentService {
   static async verifyDocumentData(documentHash: string) {
     const document = await prisma.medicalDocument.findUnique({
       where: { documentHash },
-      include: { issuer: true, patient: true },
+      // include: { issuer: true, patient: true },
     });
+    console.log("🔍 Mencari dokumen dengan hash:", document);
+
 
     if (!document) throw new Error("NOT_FOUND");
     if (document.isRevoked) throw new Error("REVOKED");
 
-    const fullPath = path.join(
-      __dirname,
-      "../../file_letters",
-      document.filePath,
-    );
+   const fullPath = path.join(process.cwd(), "file_letters", document.filePath);
     if (!fs.existsSync(fullPath)) throw new Error("FILE_MISSING");
 
     const fileBuffer = fs.readFileSync(fullPath);
@@ -226,6 +224,19 @@ export class DocumentService {
     return await prisma.medicalDocument.update({
       where: { tokenId },
       data: { isRevoked: true },
+    });
+  }
+
+  static async getPatientDocuments(patientWallet: string) {
+    return await prisma.medicalDocument.findMany({
+      where: { patientWallet },
+      include: { issuer: true },
+    });
+  }
+  static async getDocumentByTokenId(tokenId: string) {
+    return await prisma.medicalDocument.findUnique({
+      where: { tokenId },
+      include: { issuer: true, patient: true },
     });
   }
 }
