@@ -119,4 +119,26 @@ export class DoctorController {
         .json({ success: false, message: "Internal server error" });
     }
   }
+
+  static async revokeDoctor(req: Request, res: Response) {
+    try {
+      const { walletAddress: rawWallet } = req.params;
+      const walletAddress = Array.isArray(rawWallet) ? rawWallet[0] : rawWallet;
+
+      if (!walletAddress) {
+        return res
+          .status(400)
+          .json({ success: false, message: "walletAddress is required" });
+      }
+
+      // Update isVerified menjadi false untuk merevoke akses dokter
+      const revokedDoctor = await prisma.doctor.update({
+        where: { walletAddress },
+        data: { isVerified: false },
+      });
+      res.status(200).json({ success: true, data: revokedDoctor });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 }

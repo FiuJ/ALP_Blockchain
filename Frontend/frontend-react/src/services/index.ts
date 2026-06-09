@@ -4,6 +4,7 @@ import {
   verifyDoctor,
   getAllDoctorsAdmin,
   getAllPatientsAdmin,
+  revokeDoctorAdmin,
 } from "./admin";
 import {
     createDraft,
@@ -33,5 +34,5 @@ export const apiService = {
   finalizeDocument,
   getAllPatients,
   verifyDocument,
-  revokeDocument
-};
+  revokeDocument,
+  revokeDoctorAdmin}

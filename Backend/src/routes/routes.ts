@@ -50,6 +50,12 @@ router.get(
   requireAdmin,
   DoctorController.getAllForAdmin
 );
+//revoke dokter by admin
+router.patch(
+  "/admin/doctors/:walletAddress/revoke",
+  requireAdmin,
+  DoctorController.revokeDoctor
+);
 
 // ==========================================
 // 🟣 DOCTOR ONLY ROUTES (requireVerifiedDoctor)
@@ -61,5 +67,4 @@ router.post('/documents/draft', requireVerifiedDoctor, DocumentController.create
 router.post('/documents/finalize', requireVerifiedDoctor, DocumentController.finalizeDocument);
 router.patch('/documents/:tokenId/revoke', requireVerifiedDoctor, DocumentController.revokeDocument);
 router.get('/documents/:tokenId', requireVerifiedDoctor, DocumentController.getDocumentByTokenId);
-
 export default router;
