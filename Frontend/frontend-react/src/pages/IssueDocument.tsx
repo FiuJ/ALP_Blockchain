@@ -69,7 +69,7 @@ export default function IssueDocument() {
         patientWallet: selectedPatient.walletAddress, 
         documentType,
         documentDescription,
-        restDays 
+     
       });
       console.log("Draft Response:", draftRes);
       const documentHash = draftRes.documentHash || draftRes.hash; // Sesuai respons backend Anda
@@ -127,7 +127,8 @@ export default function IssueDocument() {
         filePath: draftRes.filePath,                        // 👈 Ambil filePath dari respons Draft
         documentType: documentType,                         // Dari state form
         documentDescription: documentDescription,           // Dari state form
-        patientWallet: selectedPatient.walletAddress        // Dari state pasien yang dipilih
+        patientWallet: selectedPatient.walletAddress ,       // Dari state pasien yang dipilih
+       restDays: restDays
       });
 
       setStatus('success');

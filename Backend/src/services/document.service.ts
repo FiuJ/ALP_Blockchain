@@ -11,6 +11,7 @@ export class DocumentService {
     issuerWallet: string,
     documentType: string,
     documentDescription: string,
+    restDays: number,
   ): Promise<any> {
     const fileName = `DRAFT_${Date.now()}.pdf`;
     const dirPath = path.join(__dirname, "../../file_letters");
@@ -51,13 +52,10 @@ export class DocumentService {
       // JUDUL SURAT
       // ==========================================
       doc.moveDown(5);
-      doc
-        .fontSize(16)
-        .font("Helvetica-Bold")
-        .text(documentType.toUpperCase(), {
-          align: "center",
-          characterSpacing: 2,
-        });
+      doc.fontSize(16).font("Helvetica-Bold").text(documentType.toUpperCase(), {
+        align: "center",
+        characterSpacing: 2,
+      });
 
       doc.moveDown(0.5);
 
@@ -110,7 +108,18 @@ export class DocumentService {
         align: "justify",
         lineGap: 4, // Jarak antar baris agar nyaman dibaca
       });
+      doc.font("Helvetica").fontSize(11).text(documentDescription, {
+        align: "justify",
+        lineGap: 4,
+      });
 
+      // Menambahkan keterangan hari istirahat
+      if (restDays > 0) {
+        doc.moveDown();
+        doc
+          .font("Helvetica-Bold")
+          .text(`Pasien diberikan waktu istirahat selama ${restDays} hari.`);
+      }
       // ==========================================
       // FOOTER / AREA TANDA TANGAN
       // ==========================================
@@ -164,7 +173,20 @@ export class DocumentService {
   }
 
   // Poin 4: Finalize Document
+  // Di dalam DocumentService.ts
+
+  // Poin 4: Finalize Document
   static async saveDocument(data: any, issuerWallet: string) {
+    // Logika Kalkulasi expiredAt
+    let expiredAtDate = null;
+    if (data.restDays && parseInt(data.restDays) > 0) {
+      // Ambil tanggal hari ini
+      const currentDate = new Date();
+      // Tambahkan jumlah hari istirahat
+      currentDate.setDate(currentDate.getDate() + parseInt(data.restDays));
+      expiredAtDate = currentDate;
+    }
+
     return await prisma.medicalDocument.create({
       data: {
         tokenId: data.tokenId.toString(),
@@ -174,10 +196,11 @@ export class DocumentService {
         documentDescription: data.documentDescription,
         issuerWallet,
         patientWallet: data.patientWallet,
+        // 👇 Simpan expiredAt yang sudah dikalkulasi
+        expiredAt: expiredAtDate,
       },
     });
   }
-
   // Poin 5 & 6: Verify Hash
   static async verifyDocumentData(documentHash: string) {
     const document = await prisma.medicalDocument.findUnique({
@@ -186,11 +209,14 @@ export class DocumentService {
     });
     console.log("🔍 Mencari dokumen dengan hash:", document);
 
-
     if (!document) throw new Error("NOT_FOUND");
     if (document.isRevoked) throw new Error("REVOKED");
 
-   const fullPath = path.join(process.cwd(), "file_letters", document.filePath);
+    const fullPath = path.join(
+      process.cwd(),
+      "file_letters",
+      document.filePath,
+    );
     if (!fs.existsSync(fullPath)) throw new Error("FILE_MISSING");
 
     const fileBuffer = fs.readFileSync(fullPath);

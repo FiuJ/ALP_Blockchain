@@ -239,6 +239,8 @@ export default function DoctorDashboard() {
                 <tr className="bg-white border-b border-gray-100 text-gray-500 text-sm uppercase tracking-wider">
                   <th className="px-8 py-4 font-semibold">ID Dokumen</th>
                   <th className="px-8 py-4 font-semibold">Tanggal Rilis</th>
+                                    <th className="px-8 py-4 font-semibold">Tanggal Expire</th>
+
                   <th className="px-8 py-4 font-semibold">Pasien Tujuan</th>
                   <th className="px-8 py-4 font-semibold">Status</th>
                   <th className="px-8 py-4 font-semibold text-right">Aksi</th>
@@ -281,6 +283,13 @@ export default function DoctorDashboard() {
                       </td>
                       <td className="px-8 py-5 text-sm text-gray-600">
                         {new Date(doc.issuedAt).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                       <td className="px-8 py-5 text-sm text-gray-600">
+                        {new Date(doc.expiredAt).toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
                           year: "numeric",

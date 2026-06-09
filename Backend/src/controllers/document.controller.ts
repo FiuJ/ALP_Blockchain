@@ -8,21 +8,29 @@ export interface AuthRequest extends Request {
 }
 
 export class DocumentController {
+ 
+
   static async createDraft(req: AuthRequest, res: Response): Promise<any> {
     try {
-      const { patientWallet, documentType, documentDescription } = req.body;
+      // Ambil restDays dari body
+      const { patientWallet, documentType, documentDescription, restDays } = req.body;
       const issuerWallet = req.headers["x-wallet-address"] as string;
 
       if (!issuerWallet || !patientWallet) {
         return res.status(400).json({ error: "Data dompet tidak lengkap." });
       }
 
-      // Panggil Service
+      // Pastikan restDays dikonversi ke angka
+      const parsedRestDays = parseInt(restDays, 10) || 0;
+
+      // Panggil Service untuk buat PDF. 
+      // (Kita tambahkan parsedRestDays agar tertulis di PDF jika diperlukan)
       const result = await DocumentService.createDraftPdf(
         patientWallet,
         issuerWallet,
         documentType,
         documentDescription,
+        parsedRestDays
       );
 
       return res.status(200).json({
@@ -32,6 +40,7 @@ export class DocumentController {
         documentType,
         documentDescription,
         patientWallet,
+        restDays: parsedRestDays // Kembalikan ke Frontend agar bisa dipakai saat Finalize
       });
     } catch (error) {
       return res.status(500).json({ error: "Gagal membuat draft dokumen." });

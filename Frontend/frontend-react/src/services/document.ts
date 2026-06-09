@@ -74,7 +74,7 @@ export const createDraft = async (
     patientWallet: string;
     documentType: string;
     documentDescription: string;
-    restDays: number;
+   
   },
 ) => {
   const response = await fetch(`${BASE_URL}/documents/draft`, {
@@ -100,6 +100,7 @@ export const finalizeDocument = async (
     documentType: string;
     documentDescription: string;
     patientWallet: string;
+    restDays: number; // 👈 TAMBAHKAN INI
   },
 ) => {
   const response = await fetch(`${BASE_URL}/documents/finalize`, {
