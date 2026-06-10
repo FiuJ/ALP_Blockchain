@@ -16,10 +16,9 @@ const router = Router();
 router.get("/doctors", DoctorController.getAll);
 router.get("/admin/patients", requireAdmin, PatientController.getAll);
 router.get("/doctors/:walletAddress", DoctorController.getProfile);
-router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
 router.get("/patients", PatientController.getAll);
 
-// router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
+router.get('/documents/verify/:documentHash', DocumentController.verifyByHash);
 
 // ==========================================
 // 🟡 BASIC PROTECTED ROUTES (requireWallet)
@@ -31,8 +30,7 @@ router.get(
   requireWallet,
   PatientController.getProfile,
 );
-// router.get('/documents/patient/:walletAddress', requireWallet, DocumentController.getPatientHistory);
-
+router.get('/documents/patient', requireWallet, DocumentController.getPatientDocuments);
 // ==========================================
 // 🔴 ADMIN ROUTES (requireAdmin)
 // ==========================================
@@ -52,16 +50,21 @@ router.get(
   requireAdmin,
   DoctorController.getAllForAdmin
 );
+//revoke dokter by admin
+router.patch(
+  "/admin/doctors/:walletAddress/revoke",
+  requireAdmin,
+  DoctorController.revokeDoctor
+);
 
 // ==========================================
 // 🟣 DOCTOR ONLY ROUTES (requireVerifiedDoctor)
 // ==========================================
 // router.post('/documents/draft', requireVerifiedDoctor, DocumentController.createDraft);
 // router.post('/documents/finalize', requireVerifiedDoctor, DocumentController.finalizeDocument);
-// router.patch('/documents/:tokenId/revoke', requireVerifiedDoctor, DocumentController.revokeDocument);
-// router.get('/documents/doctor/:walletAddress', requireVerifiedDoctor, DocumentController.getDoctorHistory);
+router.get('/documents/doctor/:walletAddress', requireVerifiedDoctor, DocumentController.getDoctorHistory);
 router.post('/documents/draft', requireVerifiedDoctor, DocumentController.createDraft);
 router.post('/documents/finalize', requireVerifiedDoctor, DocumentController.finalizeDocument);
 router.patch('/documents/:tokenId/revoke', requireVerifiedDoctor, DocumentController.revokeDocument);
-
+router.get('/documents/:tokenId', requireVerifiedDoctor, DocumentController.getDocumentByTokenId);
 export default router;

@@ -43,7 +43,13 @@ export default function OnboardingPage() {
             "🎉 Registrasi berhasil disinkronkan ke Blockchain & Database!",
           );
           localStorage.setItem("userRole", role);
-          navigate("/profile");
+          
+          // 👇 PERBAIKAN: Arahkan ke dashboard sesuai role
+          if (role === "doctor") {
+            navigate("/doctor/dashboard");
+          } else if (role === "patient") {
+            navigate("/patient/dashboard");
+          }
         },
         onError: (error: any) => {
           alert(`Gagal: ${error.message || "Terjadi kesalahan sistem"}`);

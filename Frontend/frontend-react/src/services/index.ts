@@ -4,6 +4,7 @@ import {
   verifyDoctor,
   getAllDoctorsAdmin,
   getAllPatientsAdmin,
+  revokeDoctorAdmin,
 } from "./admin";
 import {
     createDraft,
@@ -11,6 +12,8 @@ import {
   getDashboardStats,
   getDoctorDocuments,
   getPatientDocuments,
+  revokeDocument,
+  verifyDocument,
 } from "./document";
 // Export interface jika dibutuhkan komponen lain
 export type { DoctorData, PatientData } from "./config";
@@ -29,5 +32,7 @@ export const apiService = {
   getPatientDocuments,
   createDraft,
   finalizeDocument,
-  getAllPatients
-};
+  getAllPatients,
+  verifyDocument,
+  revokeDocument,
+  revokeDoctorAdmin}

@@ -1,11 +1,11 @@
 {
   "_format": "hh3-sol-build-info-1",
-  "id": "solc-0_8_28-17039f78e6c0773646bdc01d7686c254c806d545",
+  "id": "solc-0_8_28-c06dffc2df37b66a23581c2e6d09ac56a76b6fbd",
   "solcVersion": "0.8.28",
   "solcLongVersion": "0.8.28+commit.7893614a",
   "compilerType": "solc",
   "toolVersions": {
-    "hardhat": "3.6.0"
+    "hardhat": "3.9.0"
   },
   "userSourceNameMap": {
     "contracts/PatientRegistry.sol": "project/contracts/PatientRegistry.sol"

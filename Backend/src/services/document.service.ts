@@ -11,14 +11,16 @@ export class DocumentService {
     issuerWallet: string,
     documentType: string,
     documentDescription: string,
+    restDays: number,
   ): Promise<any> {
+    console.log("📋 Membuat draft PDF dengan data:", restDays)
     const fileName = `DRAFT_${Date.now()}.pdf`;
     const dirPath = path.join(__dirname, "../../file_letters");
     if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
     const filePath = path.join(dirPath, fileName);
 
     return new Promise((resolve, reject) => {
-      // ... kode konfigurasi path dan file sebelumnya tetap ...
+    
 
       // 1. Inisialisasi PDF dengan Margin dan Ukuran Kertas A4
       const doc = new PDFDocument({
@@ -51,13 +53,10 @@ export class DocumentService {
       // JUDUL SURAT
       // ==========================================
       doc.moveDown(5);
-      doc
-        .fontSize(16)
-        .font("Helvetica-Bold")
-        .text(documentType.toUpperCase(), {
-          align: "center",
-          characterSpacing: 2,
-        });
+      doc.fontSize(16).font("Helvetica-Bold").text(documentType.toUpperCase(), {
+        align: "center",
+        characterSpacing: 2,
+      });
 
       doc.moveDown(0.5);
 
@@ -110,7 +109,18 @@ export class DocumentService {
         align: "justify",
         lineGap: 4, // Jarak antar baris agar nyaman dibaca
       });
+      doc.font("Helvetica").fontSize(11).text(documentDescription, {
+        align: "justify",
+        lineGap: 4,
+      });
 
+      // Menambahkan keterangan hari istirahat
+      if (restDays > 0) {
+        doc.moveDown();
+        doc
+          .font("Helvetica-Bold")
+          .text(`Pasien diberikan waktu istirahat selama ${restDays} hari.`);
+      }
       // ==========================================
       // FOOTER / AREA TANDA TANGAN
       // ==========================================
@@ -164,7 +174,21 @@ export class DocumentService {
   }
 
   // Poin 4: Finalize Document
+  // Di dalam DocumentService.ts
+
+  // Poin 4: Finalize Document
   static async saveDocument(data: any, issuerWallet: string) {
+    console.log("📥 Menerima data untuk finalisasi dokumen:", data);
+    // Logika Kalkulasi expiredAt
+    let expiredAtDate = null;
+    if (data.restDays && parseInt(data.restDays) > 0) {
+      // Ambil tanggal hari ini
+      const currentDate = new Date();
+      // Tambahkan jumlah hari istirahat
+      currentDate.setDate(currentDate.getDate() + parseInt(data.restDays));
+      expiredAtDate = currentDate;
+    }
+
     return await prisma.medicalDocument.create({
       data: {
         tokenId: data.tokenId.toString(),
@@ -174,23 +198,25 @@ export class DocumentService {
         documentDescription: data.documentDescription,
         issuerWallet,
         patientWallet: data.patientWallet,
+        // 👇 Simpan expiredAt yang sudah dikalkulasi
+        expiredAt: expiredAtDate,
       },
     });
   }
-
   // Poin 5 & 6: Verify Hash
   static async verifyDocumentData(documentHash: string) {
     const document = await prisma.medicalDocument.findUnique({
       where: { documentHash },
-      include: { issuer: true, patient: true },
+      // include: { issuer: true, patient: true },
     });
+    console.log("🔍 Mencari dokumen dengan hash:", document);
 
     if (!document) throw new Error("NOT_FOUND");
     if (document.isRevoked) throw new Error("REVOKED");
 
     const fullPath = path.join(
-      __dirname,
-      "../../file_letters",
+      process.cwd(),
+      "file_letters",
       document.filePath,
     );
     if (!fs.existsSync(fullPath)) throw new Error("FILE_MISSING");
@@ -226,6 +252,19 @@ export class DocumentService {
     return await prisma.medicalDocument.update({
       where: { tokenId },
       data: { isRevoked: true },
+    });
+  }
+
+  static async getPatientDocuments(patientWallet: string) {
+    return await prisma.medicalDocument.findMany({
+      where: { patientWallet },
+      include: { issuer: true },
+    });
+  }
+  static async getDocumentByTokenId(tokenId: string) {
+    return await prisma.medicalDocument.findUnique({
+      where: { tokenId },
+      include: { issuer: true, patient: true },
     });
   }
 }

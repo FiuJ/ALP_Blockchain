@@ -9,7 +9,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import IssueDocument from "./pages/IssueDocument";
 import PatientDashboard from "./pages/PatientDashboard";
-import ScannerPage from "./pages/ScannerPage";
+import UploadPage from "./pages/UploadPage";
 import VerifyResultPage from "./pages/VerifyResultPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import AdminLayout from "./layouts/AdminLayout";
@@ -40,7 +40,7 @@ function App() {
       <Route path="/patient/dashboard" element={<PatientDashboard />} />
 
       {/* E. Portal Verifikator (HRD/Publik) */}
-      <Route path="/verify" element={<MainLayout><ScannerPage /></MainLayout>} />
+      <Route path="/upload" element={<MainLayout><UploadPage /></MainLayout>} />
       <Route path="/verify/result/:documentHash" element={<MainLayout><VerifyResultPage /></MainLayout>} />
     </Routes>
   );

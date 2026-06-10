@@ -31,3 +31,6 @@
 /snapshots
 
 /generated/prisma
+
+# file letter
+/file_letters

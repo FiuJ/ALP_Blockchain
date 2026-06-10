@@ -52,29 +52,30 @@ export const getDoctorDocuments = async (walletAddress: string) => {
 
 export const getPatientDocuments = async (walletAddress: string) => {
   const response = await fetch(
-    `${BASE_URL}/documents/patient/${walletAddress}`,
+    `${BASE_URL}/documents/patient`, // 👈 Hapus /${walletAddress} di sini
     {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "x-wallet-address": walletAddress,
+        "x-wallet-address": walletAddress, // 👈 Backend akan membaca dari sini!
       },
     },
   );
+
   const result = await response.json();
   if (!response.ok)
     throw new Error(result.message || "Gagal memuat brankas dokumen.");
+
   return result.data;
 };
-
 export const createDraft = async (
-  doctorWallet: string, 
-  payload: { 
-    patientWallet: string, 
-    documentType: string,
-    documentDescription: string,
-    restDays: number 
-  }
+  doctorWallet: string,
+  payload: {
+    patientWallet: string;
+    documentType: string;
+    documentDescription: string;
+    restDays: number; // 👈 TAMBAHKAN INI
+  },
 ) => {
   const response = await fetch(`${BASE_URL}/documents/draft`, {
     method: "POST",
@@ -85,13 +86,22 @@ export const createDraft = async (
     body: JSON.stringify(payload),
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "Gagal membuat draf dokumen.");
+  if (!response.ok)
+    throw new Error(data.message || "Gagal membuat draf dokumen.");
   return data;
 };
 
 export const finalizeDocument = async (
-  doctorWallet: string, 
-  payload: { hash: string, tokenId: string }
+  doctorWallet: string,
+  payload: {
+    tokenId: string;
+    documentHash: string;
+    filePath: string;
+    documentType: string;
+    documentDescription: string;
+    patientWallet: string;
+    restDays: number; // 👈 TAMBAHKAN INI
+  },
 ) => {
   const response = await fetch(`${BASE_URL}/documents/finalize`, {
     method: "POST",
@@ -99,9 +109,39 @@ export const finalizeDocument = async (
       "Content-Type": "application/json",
       "x-wallet-address": doctorWallet,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload), // Payload sekarang berisi data lengkap
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "Gagal melakukan finalisasi dokumen.");
+  if (!response.ok)
+    throw new Error(data.message || "Gagal melakukan finalisasi dokumen.");
+  return data;
+};
+
+export const verifyDocument = async (documentHash: string) => {
+  const response = await fetch(`${BASE_URL}/documents/verify/${documentHash}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(data.message || "Gagal memverifikasi dokumen.");
+  return data;
+};
+
+export const revokeDocument = async (tokenId: string, doctorWallet: string) => {
+  const response = await fetch(`${BASE_URL}/documents/${tokenId}/revoke`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "x-wallet-address": doctorWallet,
+    },
+  });
+  const data = await response.json();
+  if (!response.ok)
+    throw new Error(
+      data.error || data.message || "Gagal melakukan revoke di database.",
+    );
   return data;
 };

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createWalletClient, custom, publicActions } from "viem";
+import { hardhat } from "viem/chains";
 import { useWallet } from "../hooks/useWallet";
-// import { apiService } from "../services/api";
 import { 
   ShieldAlert, 
   Wallet, 
@@ -12,44 +13,91 @@ import {
   FileText 
 } from "lucide-react";
 import { apiService } from "../services";
+// 👇 Import Contract Address dan ABI untuk Registry Dokter Anda
+import { DOCTOR_REGISTRY_ADDRESS, doctorRegistryABI } from "../config/DoctorRegistryContractConfig"; 
 
 export default function AdminDashboardPage() {
   const { address, isRabby, connectWallet } = useWallet();
   const queryClient = useQueryClient();
+  
+  // State untuk melacak status proses
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [loadingText, setLoadingText] = useState<string>("");
 
   // 1. Fetching Data Dokter Pending
   const { data: pendingDoctors, isLoading, isError, error } = useQuery({
     queryKey: ["pendingDoctors", address],
     queryFn: () => apiService.getPendingDoctors(address as string),
-    enabled: !!address, // Hanya jalan kalau wallet terkoneksi
-    retry: false // Jangan diulang jika error (misal karena 403 Forbidden)
+    enabled: !!address,
+    retry: false 
   });
 
-  // 2. Mutation untuk Verifikasi Dokter
-  const verifyMutation = useMutation({
+  // 2. Mutation untuk Update Database MySQL (Langkah Terakhir)
+  const verifyDbMutation = useMutation({
     mutationFn: (doctorWallet: string) => apiService.verifyDoctor(address as string, doctorWallet),
     onSuccess: () => {
-      // Refresh tabel otomatis dengan membuang cache lama
       queryClient.invalidateQueries({ queryKey: ["pendingDoctors"] });
-      alert("✅ Dokter berhasil diverifikasi dan sekarang aktif di sistem!");
+      alert("✅ Dokter berhasil diverifikasi di Blockchain dan Database!");
     },
     onError: (err: any) => {
-      alert(`❌ Gagal: ${err.message}`);
+      alert(`❌ Blockchain berhasil, tapi gagal update Database: ${err.message}`);
     },
     onSettled: () => {
       setProcessingId(null);
+      setLoadingText("");
     }
   });
 
-  const handleVerify = (doctorWallet: string) => {
-    if (confirm("Apakah Anda yakin ingin memverifikasi lisensi dokter ini?")) {
-      setProcessingId(doctorWallet);
-      verifyMutation.mutate(doctorWallet);
+  // 3. FUNGSI UTAMA: Panggil Blockchain lalu Update Database
+  const handleVerify = async (doctorWallet: string) => {
+    if (!confirm("Apakah Anda yakin ingin memverifikasi lisensi dokter ini ke Blockchain?")) return;
+    
+    setProcessingId(doctorWallet);
+
+    try {
+      // TAHAP 1: EKSEKUSI SMART CONTRACT VIA VIEM
+      setLoadingText("Menunggu Tanda Tangan Dompet...");
+      
+      const walletClient = createWalletClient({
+        chain: hardhat, 
+        transport: custom(window.ethereum!)
+      }).extend(publicActions);
+
+      // Pastikan jaringan benar
+      try { await walletClient.switchChain({ id: hardhat.id }); } catch (e) {}
+
+      // Panggil fungsi verifyDoctor di Smart Contract
+      // Sesuaikan nama fungsi 'verifyDoctor' dengan yang ada di Solidity Anda
+      const txHash = await walletClient.writeContract({
+        address: DOCTOR_REGISTRY_ADDRESS as `0x${string}`,
+        abi: doctorRegistryABI,
+        functionName: 'verifyDoctor', 
+        args: [doctorWallet as `0x${string}`],
+        account: address as `0x${string}`
+      });
+
+      setLoadingText("Mencatat di Blockchain...");
+      
+      // Tunggu hingga transaksi selesai ditambang
+      await walletClient.waitForTransactionReceipt({ hash: txHash });
+
+      // TAHAP 2: UPDATE DATABASE MYSQL VIA BACKEND
+      setLoadingText("Sinkronisasi Database...");
+      verifyDbMutation.mutate(doctorWallet);
+
+    } catch (err: any) {
+      console.error(err);
+      setProcessingId(null);
+      setLoadingText("");
+      
+      if (err.code === 4001 || err.message?.includes('User rejected')) {
+        alert("❌ Transaksi dibatalkan oleh Admin di dalam Dompet.");
+      } else {
+        alert(`❌ Gagal memverifikasi di Blockchain: ${err.message}`);
+      }
     }
   };
 
-  // Helper untuk memotong wallet address
   const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
 
   // ==========================================
@@ -58,6 +106,7 @@ export default function AdminDashboardPage() {
   if (!address) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        {/* ... (Kode UI sama persis dengan milik Anda) ... */}
         <div className="bg-white p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-gray-100">
           <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShieldAlert size={40} />
@@ -78,11 +127,12 @@ export default function AdminDashboardPage() {
   }
 
   // ==========================================
-  // STATE 2: ERROR / BUKAN ADMIN (403 Forbidden)
+  // STATE 2: ERROR / BUKAN ADMIN
   // ==========================================
   if (isError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        {/* ... (Kode UI sama persis dengan milik Anda) ... */}
         <div className="bg-red-50 p-8 rounded-3xl max-w-md w-full text-center border border-red-100">
           <ShieldAlert size={48} className="text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-red-700 mb-2">Akses Ditolak</h2>
@@ -102,7 +152,6 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-gray-50 p-8 font-sans">
       <div className="max-w-6xl mx-auto">
         
-        {/* Header Dashboard */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-indigo-100 rounded-xl">
@@ -114,7 +163,6 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Indikator Admin Wallet */}
           <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-full">
             <div className={`w-2 h-2 rounded-full animate-pulse ${isRabby ? 'bg-orange-500' : 'bg-green-500'}`}></div>
             <p className="text-sm font-mono font-bold text-indigo-800">
@@ -123,7 +171,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Tabel Data Dokter Pending */}
         <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/40 border border-gray-200 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -165,7 +212,6 @@ export default function AdminDashboardPage() {
                   pendingDoctors.map((doc: any) => (
                     <tr key={doc.walletAddress} className="hover:bg-indigo-50/30 transition-colors">
                       
-                      {/* Kolom Nama & Wallet */}
                       <td className="px-6 py-4">
                         <p className="font-bold text-gray-900 text-base">{doc.name}</p>
                         <div className="flex items-center gap-1 mt-1 text-xs text-gray-400 font-mono">
@@ -173,14 +219,12 @@ export default function AdminDashboardPage() {
                         </div>
                       </td>
 
-                      {/* Kolom SIP */}
                       <td className="px-6 py-4">
                         <span className="font-semibold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg border border-gray-200">
                           {doc.doctorLicenseNumber}
                         </span>
                       </td>
 
-                      {/* Kolom Spesialisasi & Klinik */}
                       <td className="px-6 py-4">
                         <p className="font-medium text-gray-800 flex items-center gap-1.5">
                           <Activity size={14} className="text-indigo-500" /> {doc.specialization}
@@ -190,19 +234,22 @@ export default function AdminDashboardPage() {
                         </p>
                       </td>
 
-                      {/* Kolom Tombol Aksi */}
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => handleVerify(doc.walletAddress)}
                           disabled={processingId === doc.walletAddress}
-                          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
+                          className={`inline-flex items-center justify-center min-w-[160px] gap-2 px-5 py-2.5 rounded-xl font-bold transition-all ${
                             processingId === doc.walletAddress
-                              ? "bg-indigo-100 text-indigo-400 cursor-not-allowed"
+                              ? "bg-indigo-100 text-indigo-500 cursor-wait"
                               : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:-translate-y-0.5"
                           }`}
                         >
                           {processingId === doc.walletAddress ? (
-                            <><Loader2 size={16} className="animate-spin" /> Memproses...</>
+                            <>
+                              <Loader2 size={16} className="animate-spin" /> 
+                              {/* Teks dinamis sesuai status Viem */}
+                              <span className="text-xs">{loadingText || "Memproses..."}</span>
+                            </>
                           ) : (
                             <><CheckCircle size={16} /> Verifikasi</>
                           )}

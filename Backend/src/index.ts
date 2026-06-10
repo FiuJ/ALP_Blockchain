@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static folder agar React bisa merender/mendownload PDF dengan URL http://localhost:5000/files/namafile.pdf
-app.use('/files', express.static(path.join(__dirname, '../../file_letters')));
+app.use('/files', express.static(path.join(__dirname, '../file_letters')));
 
 // API Routes
 app.use('/api', rootRouter);

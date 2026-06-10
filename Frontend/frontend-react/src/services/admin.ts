@@ -51,3 +51,18 @@ export const getAllPatientsAdmin = async (adminWalletAddress: string) => {
   if (!response.ok) throw new Error(result.message || "Akses Ditolak: Anda bukan Admin.");
   return result.data;
 };
+
+export const revokeDoctorAdmin = async (doctorWallet: string, adminWallet: string) => {
+  const response = await fetch(`${BASE_URL}/admin/doctors/${doctorWallet}/revoke`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "x-wallet-address": adminWallet, // Autentikasi middleware admin
+    },
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "Gagal mencabut akses dokter di database.");
+  }
+  return data;
+};

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createWalletClient, custom, publicActions } from 'viem';
+// 👇 Tambahkan hexToBigInt di import viem
+import { createWalletClient, custom, publicActions, hexToBigInt } from 'viem';
 import { hardhat } from 'viem/chains';
 import { useWallet } from '../hooks/useWallet';
-import { useQuery } from '@tanstack/react-query'; // 👈 Import useQuery
+import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/';
 import DoctorLayout from '../layouts/DoctorLayout';
 import { MEDICAL_NFT_ADDRESS, medicalNftABI } from '../config/MedicalDocumentContractConfig';
@@ -65,12 +66,14 @@ export default function IssueDocument() {
       // 1. DRAFT (Minta Hash dari Backend & Generate PDF)
       setStatus('drafting');
       const draftRes = await apiService.createDraft(address, { 
-        patientWallet: selectedPatient.walletAddress, // 👈 Ambil dari objek yang dipilih
+        patientWallet: selectedPatient.walletAddress, 
         documentType,
         documentDescription,
-        restDays 
+        restDays
+     
       });
-      const documentHash = draftRes.data.hash; 
+      console.log("Draft Response:", draftRes);
+      const documentHash = draftRes.documentHash || draftRes.hash; // Sesuai respons backend Anda
       
       const tokenURI = `http://localhost:5000/api/metadata/${documentHash}`;
       const expiredAtTimestamp = BigInt(Math.floor(Date.now() / 1000) + (restDays * 24 * 60 * 60));
@@ -91,21 +94,42 @@ export default function IssueDocument() {
         args: [
           documentHash, 
           tokenURI, 
-          selectedPatient.walletAddress as `0x${string}`, // 👈 Bypass ke sini
+          selectedPatient.walletAddress.toLowerCase() as `0x${string}`,
           expiredAtTimestamp
         ],
         account: address as `0x${string}`
       });
 
       setStatus('minting');
+      
+      // Tunggu konfirmasi penambangan blok
       const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash });
-      const fakeTokenId = "1"; 
+      
+      // ========================================================
+      // 👇 MENDAPATKAN TOKEN ID ASLI DARI EVENT LOG BLOCKCHAIN
+      // ========================================================
+      // Event Transfer ERC721 standar memiliki 4 bagian topic (Signature, From, To, TokenId)
+      const transferLog = receipt.logs.find((log) => log.topics.length === 4);
+      
+      if (!transferLog || !transferLog.topics[3]) {
+        throw new Error("Gagal mengekstrak Token ID. Pastikan Smart Contract memancarkan event Transfer yang standar.");
+      }
 
-      // 3. FINALIZE (Simpan permanen ke MySQL)
+      // Konversi topic Hexadecimal (0x000...001) menjadi String Angka ("1")
+      const realTokenId = hexToBigInt(transferLog.topics[3]).toString();
+      console.log("Berhasil Minting NFT dengan Token ID asli:", realTokenId);
+      // ========================================================
+
+      // 3. FINALIZE (Simpan permanen Token ID asli ke MySQL)
       setStatus('finalizing');
       await apiService.finalizeDocument(address, {
-        hash: documentHash,
-        tokenId: fakeTokenId 
+        tokenId: realTokenId,                               // Dari event Blockchain
+        documentHash: documentHash,                         // Dari respons Draft
+        filePath: draftRes.filePath,                        // 👈 Ambil filePath dari respons Draft
+        documentType: documentType,                         // Dari state form
+        documentDescription: documentDescription,           // Dari state form
+        patientWallet: selectedPatient.walletAddress ,       // Dari state pasien yang dipilih
+       restDays: restDays
       });
 
       setStatus('success');
@@ -168,16 +192,13 @@ export default function IssueDocument() {
 
           <form onSubmit={handleIssue} className="space-y-6">
             
-            {/* ===================================== */}
-            {/* SEARCH BAR PASIEN YANG DITINGKATKAN */}
-            {/* ===================================== */}
+            {/* SEARCH BAR PASIEN */}
             <div className="relative">
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700 mb-2">
                 <User size={16} className="text-blue-500" /> Pasien Tujuan
               </label>
 
               {selectedPatient ? (
-                // Tampilan JIKA Pasien Sudah Dipilih
                 <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl">
                   <div>
                     <p className="font-bold text-blue-900 flex items-center gap-2">
@@ -195,7 +216,6 @@ export default function IssueDocument() {
                   </button>
                 </div>
               ) : (
-                // Tampilan JIKA Sedang Mencari Pasien
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <Search size={18} className="text-gray-400" />
@@ -212,7 +232,6 @@ export default function IssueDocument() {
                     onFocus={() => setIsDropdownOpen(true)}
                   />
 
-                  {/* Dropdown Hasil Pencarian */}
                   {isDropdownOpen && searchQuery && (
                     <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
                       {isLoadingPatients ? (
@@ -239,7 +258,6 @@ export default function IssueDocument() {
                 </div>
               )}
             </div>
-            {/* ===================================== */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
